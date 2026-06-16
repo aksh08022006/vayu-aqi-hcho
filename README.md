@@ -102,61 +102,61 @@ This repository currently focuses on the **interactive front-end prototype** for
 
 ```mermaid
 flowchart TD
-    A[Satellite Data Sources] --> B[Data Ingestion Layer]
-    C[Ground Monitoring Data] --> B
-    D[Meteorological Data] --> B
-    E[Fire Activity Data] --> B
-    F[Land Cover / Vegetation / Urban Proxies] --> B
+    A["Satellite Data Sources"] --> B["Data Ingestion Layer"]
+    C["Ground Monitoring Data"] --> B
+    D["Meteorological Data"] --> B
+    E["Fire Activity Data"] --> B
+    F["Land Cover, Vegetation, Urban Proxies"] --> B
 
-    B --> G[Preprocessing & Quality Filtering]
-    G --> H[Spatiotemporal Grid Builder]
-    H --> I[Feature Engineering Layer]
+    B --> G["Preprocessing and Quality Filtering"]
+    G --> H["Spatiotemporal Grid Builder"]
+    H --> I["Feature Engineering Layer"]
 
-    I --> J[Surface Pollutant Prediction Models]
-    I --> K[HCHO Hotspot Detection Engine]
-    I --> L[Fire-HCHO Correlation Engine]
-    I --> M[Wind Transport Analysis]
+    I --> J["Surface Pollutant Prediction Models"]
+    I --> K["HCHO Hotspot Detection Engine"]
+    I --> L["Fire-HCHO Correlation Engine"]
+    I --> M["Wind Transport Analysis"]
 
-    J --> N[AQI Calculation Engine]
-    K --> O[PHV & Persistence Scoring]
-    L --> P[Source Attribution Engine]
+    J --> N["AQI Calculation Engine"]
+    K --> O["PHV and Persistence Scoring"]
+    L --> P["Source Attribution Engine"]
     M --> P
 
-    N --> Q[Interactive Dashboard]
+    N --> Q["Interactive Dashboard"]
     O --> Q
     P --> Q
 
-    Q --> R[District Reports]
-    Q --> S[Policy Action Cards]
-    Q --> T[Maps, Charts & Exports]
+    Q --> R["District Reports"]
+    Q --> S["Policy Action Cards"]
+    Q --> T["Maps, Charts, Exports"]
 ```
 
 ### HCHO Hotspot Workflow
 
 ```mermaid
 flowchart LR
-    A[Sentinel-5P HCHO] --> B[Cloud / QA Filtering]
-    B --> C[Daily / Weekly Aggregation]
-    C --> D[HCHO Concentration Map]
-    D --> E[PHV Anomaly Score]
-    E --> F[Hotspot Clustering]
-    F --> G[Persistence Analysis]
-    G --> H[Fire & Wind Linkage]
-    H --> I[Source Attribution]
-    I --> J[Hotspot Intelligence Report]
+    A["Sentinel-5P HCHO"] --> B["Cloud and QA Filtering"]
+    B --> C["Daily and Weekly Aggregation"]
+    C --> D["HCHO Concentration Map"]
+    D --> E["PHV Anomaly Score"]
+    E --> F["Hotspot Clustering"]
+    F --> G["Persistence Analysis"]
+    G --> H["Fire and Wind Linkage"]
+    H --> I["Source Attribution"]
+    I --> J["Hotspot Intelligence Report"]
 ```
 
 ### Current Web Prototype Flow
 
 ```mermaid
 flowchart LR
-    A[Next.js App Router] --> B[Scientific Story Sections]
-    B --> C[MapLibre Basemap]
-    C --> D[deck.gl AQI / Gas / Hotspot Layers]
-    D --> E[Hover Readouts + Legends]
-    B --> F[Canvas India Field]
-    B --> G[Animated Pipeline]
-    E --> H[Hackathon Demo Experience]
+    A["Next.js App Router"] --> B["Scientific Story Sections"]
+    B --> C["MapLibre Basemap"]
+    C --> D["deck.gl AQI, Gas, Hotspot Layers"]
+    D --> E["Hover Readouts and Legends"]
+    B --> F["Canvas India Field"]
+    B --> G["Animated Pipeline"]
+    E --> H["Hackathon Demo Experience"]
 ```
 
 ---
