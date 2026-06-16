@@ -330,7 +330,9 @@ export function Model() {
     const a = animate(".model-sig", {
       offsetDistance: ["0%", "100%"], duration: 2600, loop: true, ease: "linear",
     });
-    return () => a.cancel();
+    return () => {
+      a.cancel();
+    };
   }, []);
   return (
     <Section id="model" index="11" eyebrow="The Engine" variant="paper"
@@ -447,7 +449,7 @@ export function FinalImpact() {
     if (reduce) { spans.forEach((s) => (s.style.transform = "none")); return; }
     const io = new IntersectionObserver((es) => es.forEach((e) => {
       if (!e.isIntersecting) return; io.disconnect();
-      animate(spans, { translateY: ["110%", "0%"], duration: 1400, delay: (_, i) => i * 120, ease: "cubicBezier(0.16,1,0.3,1)" });
+      animate(spans, { translateY: ["110%", "0%"], duration: 1400, delay: (_: HTMLElement, i: number) => i * 120, ease: "cubicBezier(0.16,1,0.3,1)" });
     }), { threshold: 0.4 });
     io.observe(el); return () => io.disconnect();
   }, []);
