@@ -1,8 +1,8 @@
 "use client";
 import { useEffect, useRef } from "react";
-import { animate, stagger } from "animejs";
+import { animate, cubicBezier, stagger } from "animejs";
 
-const RESOLVE = "cubicBezier(0.16, 1, 0.3, 1)";
+const RESOLVE = cubicBezier(0.16, 1, 0.3, 1);
 
 /**
  * One-shot enter reveal for any container. Animates direct children that carry

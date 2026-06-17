@@ -1,6 +1,9 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { createScope, createDrawable, animate, stagger, utils } from "animejs";
+import { createScope, createDrawable, animate, cubicBezier, stagger, utils } from "animejs";
+
+const RESOLVE = cubicBezier(0.16, 1, 0.3, 1);
+const DRAW_EASE = cubicBezier(0.65, 0, 0.35, 1);
 
 const INPUTS = [
   { id: "insat", label: "INSAT-3D", sub: "Geostationary AOD · 10 km · 30-min (MOSDAC)" },
@@ -52,11 +55,11 @@ export function Pipeline() {
           io.disconnect();
           animate(".pl-node", {
             opacity: [0, 1], scale: [0.6, 1], duration: 500,
-            delay: stagger(60), ease: "cubicBezier(0.16,1,0.3,1)",
+            delay: stagger(60), ease: RESOLVE,
           });
           animate(createDrawable(".pl-edge"), {
             draw: ["0 0", "0 1"], duration: 900, delay: stagger(70, { start: 300 }),
-            ease: "cubicBezier(0.65,0,0.35,1)",
+            ease: DRAW_EASE,
           });
           animate(".pl-particle", {
             offsetDistance: ["0%", "100%"], duration: 2400, delay: stagger(120),

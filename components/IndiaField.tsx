@@ -95,10 +95,34 @@ export function IndiaField({
         ctx.fill();
       }
       ctx.globalAlpha = 1;
-      raf = requestAnimationFrame(draw); // continuous; reduce-motion freezes the visuals
     };
-    raf = requestAnimationFrame(draw);
-    return () => { cancelAnimationFrame(raf); ro.disconnect(); };
+
+    const tick = () => {
+      draw();
+      raf = requestAnimationFrame(tick);
+    };
+    const start = () => {
+      if (!raf && !reduce) raf = requestAnimationFrame(tick);
+    };
+    const stop = () => {
+      if (!raf) return;
+      cancelAnimationFrame(raf);
+      raf = 0;
+    };
+
+    draw();
+    if (!reduce) {
+      const io = new IntersectionObserver((entries) => {
+        const visible = entries.some((entry) => entry.isIntersecting);
+        if (visible) start();
+        else stop();
+      }, { rootMargin: "220px 0px" });
+      io.observe(canvas);
+      start();
+      return () => { stop(); io.disconnect(); ro.disconnect(); };
+    }
+
+    return () => { stop(); ro.disconnect(); };
   }, [mode, height]);
 
   return (

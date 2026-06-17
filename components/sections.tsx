@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { animate } from "animejs";
+import { animate, cubicBezier } from "animejs";
 import { Section } from "./Section";
 import { IndiaField } from "./IndiaField";
 import { DeckMap } from "./DeckMap";
@@ -9,6 +9,7 @@ import { INDIA_POLY, project, AQI_STOPS, PLACES } from "@/lib/india";
 
 /* ---------- shared helpers ---------- */
 const MVW = 600, MVH = 620;
+const RESOLVE = cubicBezier(0.16, 1, 0.3, 1);
 const indiaD =
   INDIA_POLY.map(([lon, lat], i) => {
     const [x, y] = project(lon, lat, MVW, MVH);
@@ -50,6 +51,52 @@ function AqiLegend() {
   );
 }
 
+/* ====================================================== 02 · MISSION SNAPSHOT */
+const SNAPSHOT = [
+  ["Highest AQI Region", "Delhi NCR", "Very Poor risk corridor"],
+  ["Strongest HCHO Hotspot", "Western UP", "VOC anomaly cluster"],
+  ["Fire-linked Hotspots", "12", "sample VIIRS/MODIS-linked clusters"],
+  ["Dominant Pollutant", "PM2.5", "aerosol-driven AQI signal"],
+  ["Transport Risk", "High", "Punjab/Haryana -> Delhi NCR pathway"],
+  ["Prototype Status", "Demo Mode", "sample layers · real-data pipeline ready"],
+];
+
+export function MissionSnapshot() {
+  return (
+    <Section id="mission-snapshot" index="02" eyebrow="Mission Snapshot"
+      title="Today's atmospheric intelligence."
+      lede="A judge-facing snapshot of how VAYU converts satellite observations, fire activity and atmospheric transport into AQI and HCHO hotspot intelligence.">
+      <div className="mt-8 inline-flex max-w-full flex-wrap gap-2 rounded-sm border px-3 py-2 data text-[11px]"
+        style={{ borderColor: "var(--line)", color: "var(--color-text-2)", background: "rgba(255,255,255,0.03)" }}>
+        <span style={{ color: "var(--color-signal)" }}>Interactive Prototype</span>
+        <span>Sample Geospatial Layers</span>
+        <span>Real-Data Pipeline Ready</span>
+      </div>
+      <div className="mt-10 grid grid-cols-1 gap-px overflow-hidden rounded-sm border sm:grid-cols-2 lg:grid-cols-3"
+        style={{ borderColor: "var(--line)", background: "var(--line)" }}>
+        {SNAPSHOT.map(([label, value, sub]) => (
+          <div key={label} data-reveal className="metric-card">
+            <div className="data text-[10px] uppercase" style={{ color: "var(--color-text-3)", letterSpacing: "0.14em" }}>{label}</div>
+            <div className="serif mt-4 text-[clamp(1.9rem,3vw,3rem)] leading-none">{value}</div>
+            <div className="data mt-3 text-[12px]" style={{ color: "var(--color-text-2)" }}>{sub}</div>
+          </div>
+        ))}
+      </div>
+      <div className="mt-8 grid grid-cols-1 gap-4 border-t pt-6 md:grid-cols-[0.7fr_1.3fr]"
+        style={{ borderColor: "var(--line)" }}>
+        <a href="#mission-snapshot" className="data inline-flex w-fit items-center rounded-full px-5 py-2 text-[12px]"
+          style={{ border: "1px solid var(--color-signal)", color: "var(--color-signal)" }}>
+          Start 90-second demo
+        </a>
+        <div className="data text-[12px] leading-7" style={{ color: "var(--color-text-2)" }}>
+          <span style={{ color: "var(--color-text-1)" }}>Demo script:</span> 1. monitoring gap · 2. satellite signals ·
+          3. AQI layer · 4. HCHO hotspots · 5. fire activity · 6. wind transport · 7. policy action
+        </div>
+      </div>
+    </Section>
+  );
+}
+
 /* ====================================================== 02 · WHAT IS AIR QUALITY */
 const POLLUTANTS = [
   { k: "PM2.5", src: "Combustion · vehicles · secondary aerosol", h: "Penetrates deep into lungs & bloodstream", inf: 96 },
@@ -61,7 +108,7 @@ const POLLUTANTS = [
 ];
 export function AirQuality() {
   return (
-    <Section id="air-quality" index="02" eyebrow="The Metric" variant="paper" grid
+    <Section id="air-quality" index="03" eyebrow="The Metric" variant="paper" grid
       title="Air quality, made of six numbers."
       lede="The Air Quality Index folds many pollutants into a single value — the worst sub-index governs. Each pollutant has a source, a health cost, and a different weight in what you breathe.">
       <div className="mt-14 divide-y" style={{ borderColor: "rgba(0,0,0,0.12)" }}>
@@ -84,6 +131,50 @@ export function AirQuality() {
   );
 }
 
+/* ====================================================== 04 · OBSERVATION SIGNALS */
+const SIGNALS = [
+  ["INSAT-3D AOD", "Aerosol signal", "MOSDAC / ISRO", "10 km, high-frequency geostationary observation", "AOD is not direct surface PM2.5; meteorology is needed for conversion."],
+  ["Sentinel-5P HCHO", "VOC precursor signal", "TROPOMI", "Satellite column observation", "HCHO column is not direct surface VOC concentration."],
+  ["Sentinel-5P NO2 / SO2 / CO / O3", "Trace-gas context", "TROPOMI", "Column and tropospheric products", "Surface conversion requires ground validation and meteorology."],
+  ["CPCB CAAQMS", "Ground truth", "CPCB", "Station-level surface measurements", "Sparse and unevenly distributed across India."],
+  ["ERA5 / IMDAA", "Transport and dispersion", "Reanalysis meteorology", "Grid-scale meteorological fields", "Approximate for local plume movement."],
+  ["MODIS / VIIRS Fire", "Biomass-burning evidence", "NASA FIRMS", "Active fire and FRP signal", "Fire-HCHO correlation does not prove causality alone."],
+];
+
+export function Signals() {
+  return (
+    <Section id="signals" index="04" eyebrow="Observation Stack" variant="paper" grid
+      title="Six signals, measured separately."
+      lede="Every layer is treated as a separate atmospheric signal before it is fused into AQI, HCHO hotspot and transport intelligence.">
+      <div className="mt-12 grid grid-cols-1 gap-px overflow-hidden rounded-sm border md:grid-cols-2"
+        style={{ borderColor: "rgba(0,0,0,0.12)", background: "rgba(0,0,0,0.12)" }}>
+        {SIGNALS.map(([name, role, source, precision, limitation]) => (
+          <div key={name} data-reveal className="evidence-card panel-paper">
+            <div className="flex items-start justify-between gap-4">
+              <h3 className="serif text-2xl leading-tight">{name}</h3>
+              <span className="status-badge">{role}</span>
+            </div>
+            <dl className="mt-6 grid gap-4 data text-[12px]">
+              <div>
+                <dt>Source</dt>
+                <dd>{source}</dd>
+              </div>
+              <div>
+                <dt>Precision</dt>
+                <dd>{precision}</dd>
+              </div>
+              <div>
+                <dt>Limitation</dt>
+                <dd>{limitation}</dd>
+              </div>
+            </dl>
+          </div>
+        ))}
+      </div>
+    </Section>
+  );
+}
+
 /* ====================================================== 03 · WHY SATELLITES */
 export function WhySatellites() {
   const ref = useDrawOnEnter<HTMLDivElement>(".draw");
@@ -96,7 +187,7 @@ export function WhySatellites() {
     return pts[i];
   });
   return (
-    <Section id="satellites" index="03" eyebrow="The Gap"
+    <Section id="satellites" index="05" eyebrow="The Gap"
       title="Most people live far beyond a monitor."
       lede="India's ground network is sparse. Satellites see the whole sky, every day — turning a handful of points into a national field.">
       <div className="mt-12 grid grid-cols-12 items-center gap-10">
@@ -131,7 +222,7 @@ const LAYERS = [
 export function Observations() {
   const [active, setActive] = useState(5);
   return (
-    <Section id="observations" index="05" eyebrow="The Instruments"
+    <Section id="observations" index="07" eyebrow="The Instruments"
       title="What the satellites see."
       lede="The seasonal-mean column of each trace gas over India, rendered with MapLibre + deck.gl. Switch layers to compare what each instrument measures.">
       <div className="mt-10 flex flex-wrap gap-2">
@@ -194,7 +285,7 @@ export function AQIIndia() {
   };
 
   return (
-    <Section id="aqi" index="06" eyebrow="The Picture"
+    <Section id="aqi" index="08" eyebrow="The Picture"
       title="India, breathing."
       lede="A real surface-AQI field — predicted by the model on the gridded satellite stack, coloured by the CPCB scale, rendered live with MapLibre + deck.gl. It plays automatically; scrub to a frame and hover any cell.">
       <div ref={wrapRef} className="mt-8">
@@ -228,7 +319,7 @@ export function HCHO() {
     </g>
   );
   return (
-    <Section id="hcho" index="07" eyebrow="The Molecule" variant="paper"
+    <Section id="hcho" index="09" eyebrow="The Molecule" variant="paper"
       title="Formaldehyde is the air turning reactive."
       lede="HCHO is a short-lived product of VOC oxidation — a fingerprint of emissions and biomass burning, and a precursor that helps build ground-level ozone.">
       <div ref={ref} className="mt-12">
@@ -260,9 +351,9 @@ export function Hotspots() {
     ["biogenic", "#7fbf7f"], ["other", "#969ca4"],
   ];
   return (
-    <Section id="hotspots" index="08" eyebrow="The Finding"
+    <Section id="hotspots" index="10" eyebrow="The Finding"
       title="Where the air turns reactive."
-      lede="PHV anomalies clustered by DBSCAN and attributed to a source — over a seasonal HCHO basemap, rendered with MapLibre + deck.gl. Hover a hotspot.">
+      lede="PHV anomalies clustered by DBSCAN and attributed to a source hypothesis over a seasonal HCHO basemap. Hover a hotspot to inspect the evidence card.">
       <div className="mt-8"><DeckMap mode="hotspots" height={560} onReadout={setReadout} /></div>
       <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 data text-[12px]" style={{ color: "var(--color-text-2)" }}>
         {legend.map(([k, c]) => (
@@ -270,18 +361,56 @@ export function Hotspots() {
             <span className="block h-2.5 w-2.5 rounded-full" style={{ background: c }} />{k}
           </span>
         ))}
-        <span style={{ color: "var(--color-text-3)" }}>{readout ?? "real attributed hotspots"}</span>
+        <span style={{ color: "var(--color-text-3)" }}>{readout ?? "sample attributed hotspots"}</span>
       </div>
     </Section>
   );
 }
 
 /* ====================================================== 09 · BIOMASS BURNING */
+const BURN_STATES = [
+  {
+    label: "Before burning",
+    season: 0.35,
+    text: "Background HCHO and PM2.5 remain closer to seasonal baseline. Fire pixels are sparse and attribution should stay conservative.",
+    metrics: ["Fire signal low", "HCHO baseline", "AQI watch"],
+  },
+  {
+    label: "During burning",
+    season: 0.9,
+    text: "Fire clusters intensify across agricultural belts. CO, aerosols and HCHO anomaly signals rise in the same regional window.",
+    metrics: ["Fire signal high", "HCHO rising", "AQI pressure"],
+  },
+  {
+    label: "After burning",
+    season: 0.68,
+    text: "Downwind regions may show delayed HCHO and AQI response depending on wind direction and boundary-layer conditions.",
+    metrics: ["Lag check", "Wind alignment", "Downwind warning"],
+  },
+];
+
 export function Biomass() {
+  const [active, setActive] = useState(1);
+  const state = BURN_STATES[active];
   return (
-    <Section id="biomass" index="09" eyebrow="The Cause"
+    <Section id="biomass" index="11" eyebrow="The Cause"
       title="When the fields burn, the air answers."
-      lede="Through the post-monsoon stubble season, fire counts rise over Punjab & Haryana — and HCHO rises with them. The correlation is visible from orbit.">
+      lede="Through the post-monsoon stubble season, fire counts rise over Punjab and Haryana. VAYU treats that as evidence to test, not a conclusion to assume.">
+      <div className="mt-8 flex flex-wrap gap-2">
+        {BURN_STATES.map((s, i) => (
+          <button key={s.label} onClick={() => setActive(i)}
+            className="data rounded-full px-4 py-2 text-[12px] transition-colors"
+            style={{
+              border: "1px solid " + (i === active ? "var(--color-signal)" : "rgba(255,255,255,0.14)"),
+              color: i === active ? "var(--color-signal)" : "var(--color-text-2)",
+            }}>
+            {s.label}
+          </button>
+        ))}
+      </div>
+      <p className="mt-5 max-w-[760px] text-[15px] leading-7" style={{ color: "var(--color-text-2)" }}>
+        {state.text}
+      </p>
       <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2">
         <div>
           <div className="eyebrow mb-3">FIRE ACTIVITY · VIIRS</div>
@@ -289,12 +418,19 @@ export function Biomass() {
         </div>
         <div>
           <div className="eyebrow mb-3">HCHO COLUMN · TROPOMI</div>
-          <IndiaField mode="aqi" height={420} season={0.85} />
+          <IndiaField mode="aqi" height={420} season={state.season} />
         </div>
       </div>
+      <div className="mt-6 grid grid-cols-1 gap-px overflow-hidden rounded-sm border sm:grid-cols-3"
+        style={{ borderColor: "var(--line)", background: "var(--line)" }}>
+        {state.metrics.map((m) => (
+          <div key={m} className="bg-[var(--color-ink-800)] p-4 data text-[12px]" style={{ color: "var(--color-text-2)" }}>
+            {m}
+          </div>
+        ))}
+      </div>
       <div className="hairline data mt-6 border-t pt-4 text-[13px]" style={{ color: "var(--color-text-2)" }}>
-        Fire–HCHO correlation <span style={{ color: "var(--color-signal)" }}>r = 0.42</span> · peak lag ≈ 7 days ·
-        biomass burning &gt; 70% of HCHO emissions in burning months
+        Fire signal -&gt; HCHO response -&gt; AQI deterioration -&gt; downwind warning
       </div>
     </Section>
   );
@@ -302,15 +438,140 @@ export function Biomass() {
 
 /* ====================================================== 10 · ATMOSPHERIC TRANSPORT */
 export function Transport() {
+  const steps = [
+    ["01", "Source window", "Find upwind fires, industrial signals or urban VOC pressure."],
+    ["02", "Wind alignment", "Check whether reanalysis winds plausibly carry the plume."],
+    ["03", "Receptor impact", "Compare downwind HCHO and AQI response with CPCB context."],
+  ];
   return (
-    <Section id="transport" index="10" eyebrow="The Movement"
+    <Section id="transport" index="12" eyebrow="The Movement"
       title="The air carries it.">
       <p className="lede mt-6 max-w-[660px] text-[clamp(1.05rem,1.6vw,1.35rem)]" data-reveal>
-        Pollution does not stay where it is made. The orange path is the model&apos;s real
-        48-hour back-trajectory from Delhi; red points are fire pixels — together they
-        trace the corridor from the Punjab burning belt into the capital&apos;s air.
+        Pollution does not stay where it is made. The orange path is a 48-hour transport
+        hypothesis from Delhi; red points are fire pixels. Together they form an evidence
+        chain, not a standalone proof.
       </p>
+      <div className="mt-8 grid grid-cols-1 gap-px overflow-hidden rounded-sm border md:grid-cols-3"
+        style={{ borderColor: "var(--line)", background: "var(--line)" }}>
+        {steps.map(([num, label, text]) => (
+          <div key={label} className="bg-[var(--color-ink-800)] p-5">
+            <div className="data text-[11px]" style={{ color: "var(--color-signal)" }}>{num}</div>
+            <h3 className="serif mt-3 text-2xl">{label}</h3>
+            <p className="mt-2 text-[14px] leading-6" style={{ color: "var(--color-text-2)" }}>{text}</p>
+          </div>
+        ))}
+      </div>
       <div className="mt-10"><DeckMap mode="transport" height={600} /></div>
+    </Section>
+  );
+}
+
+/* ====================================================== 13 · POLICY ACTION BOARD */
+const ACTIONS = [
+  ["Crop Residue Burning", "High", ["HCHO anomaly", "VIIRS/MODIS fire cluster", "downwind path"], "Increase crop residue burning surveillance and issue downwind VOC precursor alerts."],
+  ["Urban-Industrial VOC", "Medium", ["HCHO + NO2 / CO context", "built-up region", "repeated hotspot"], "Prioritize VOC and NO2 source inspection around urban-industrial corridors."],
+  ["Port / Shipping Corridor", "Medium", ["coastal HCHO/CO signal", "port proximity", "persistent anomaly"], "Monitor port emissions and shipping-linked combustion signals."],
+  ["Biogenic VOC / Ozone Watch", "Medium", ["high vegetation signal", "high temperature", "HCHO enhancement"], "Flag ozone precursor risk during hot and stagnant conditions."],
+  ["Transported Plume", "High", ["upwind source", "wind alignment", "downwind hotspot"], "Warn receptor districts and cross-check with CPCB station trends."],
+];
+
+function ConfidenceBadge({ level }: { level: string }) {
+  const cls = level === "High" ? "confidence-high" : level === "Medium" ? "confidence-medium" : "confidence-low";
+  return <span className={`status-badge ${cls}`}>{level} confidence</span>;
+}
+
+export function PolicyActionBoard() {
+  return (
+    <Section id="policy-action" index="13" eyebrow="Decision Layer" variant="paper" grid
+      title="From hotspot to action."
+      lede="Every detected hotspot should end with a monitoring priority, not just a map point. VAYU turns evidence into a cautious source-attribution hypothesis and a suggested next check.">
+      <div className="mt-12 grid grid-cols-1 gap-px overflow-hidden rounded-sm border lg:grid-cols-5"
+        style={{ borderColor: "rgba(0,0,0,0.12)", background: "rgba(0,0,0,0.12)" }}>
+        {ACTIONS.map(([title, confidence, evidence, action]) => (
+          <div key={title as string} data-reveal className="panel-paper p-6">
+            <ConfidenceBadge level={confidence as string} />
+            <h3 className="serif mt-5 text-2xl leading-tight">{title as string}</h3>
+            <ul className="mt-5 space-y-2">
+              {(evidence as string[]).map((e) => (
+                <li key={e} className="data text-[11px]" style={{ color: "#8a857a" }}>+ {e}</li>
+              ))}
+            </ul>
+            <p className="mt-5 text-[14px] leading-6" style={{ color: "#4a525b" }}>{action as string}</p>
+          </div>
+        ))}
+      </div>
+    </Section>
+  );
+}
+
+/* ====================================================== 14 · EVIDENCE + TRANSPARENT SCORING */
+const EVIDENCE_CARDS = [
+  ["Sparse monitoring gap", "High", "Ground stations provide accurate surface measurements, but many Indian regions remain spatially under-monitored.", "Satellite layers help fill spatial gaps but require ground validation."],
+  ["HCHO as VOC / ozone precursor indicator", "High", "HCHO is a useful proxy for VOC activity and ozone precursor chemistry.", "HCHO columns indicate atmospheric VOC oxidation signals, not direct VOC emissions alone."],
+  ["Biomass burning influence", "Medium", "Crop residue burning and forest fires can elevate aerosols, CO, VOCs and HCHO over downwind regions.", "Fire count, wind fields and lag analysis strengthen attribution but do not prove causality by themselves."],
+  ["Pollutant-first AQI modeling", "High", "Predicting individual pollutants before calculating AQI improves interpretability and validation.", "The final AQI is only as reliable as the pollutant estimates and station validation."],
+];
+
+const FORMULAS = [
+  ["CPCB AQI", "AQI = max(pollutant sub-indices)", "The dominant pollutant controls the official AQI category."],
+  ["PHV HCHO Anomaly", "PHV = ((HCHO_pixel - HCHO_neighborhood_mean) / HCHO_neighborhood_mean) x 100", "A hotspot is meaningful when it is high relative to nearby background, not only high in absolute value."],
+  ["Source Confidence", "Confidence = satellite QA + persistence + fire evidence + wind alignment + CPCB proximity", "Every hotspot receives an evidence-backed confidence label."],
+];
+
+export function Evidence() {
+  const [weights, setWeights] = useState({ anomaly: 70, fire: 55, wind: 70, persistence: 60 });
+  const score = Math.round((weights.anomaly + weights.fire + weights.wind + weights.persistence) / 4);
+  const level = score >= 70 ? "High" : score >= 45 ? "Medium" : "Low";
+  const controls: [keyof typeof weights, string][] = [
+    ["anomaly", "HCHO anomaly"], ["fire", "Fire evidence"], ["wind", "Wind alignment"], ["persistence", "Persistence"],
+  ];
+
+  return (
+    <Section id="evidence" index="14" eyebrow="Evidence & Scoring" variant="paper" grid
+      title="Transparent scoring. No hidden magic."
+      lede="VAYU separates official AQI, HCHO anomaly strength and source confidence so the system remains explainable and honest about uncertainty.">
+      <div className="mt-12 grid grid-cols-1 gap-8 lg:grid-cols-[1fr_0.9fr]">
+        <div className="grid gap-px overflow-hidden rounded-sm border sm:grid-cols-2"
+          style={{ borderColor: "rgba(0,0,0,0.12)", background: "rgba(0,0,0,0.12)" }}>
+          {EVIDENCE_CARDS.map(([title, confidence, claim, note]) => (
+            <div key={title} data-reveal className="evidence-card panel-paper">
+              <ConfidenceBadge level={confidence} />
+              <h3 className="serif mt-5 text-2xl leading-tight">{title}</h3>
+              <p className="mt-4 text-[15px] leading-7" style={{ color: "#303840" }}>{claim}</p>
+              <p className="data mt-5 border-t pt-4 text-[11px] leading-5" style={{ borderColor: "rgba(0,0,0,0.12)", color: "#8a857a" }}>
+                Trust note: {note}
+              </p>
+            </div>
+          ))}
+        </div>
+        <div className="grid gap-4">
+          {FORMULAS.map(([label, formula, note]) => (
+            <div key={label} className="rounded-sm border p-5" style={{ borderColor: "rgba(0,0,0,0.12)", background: "rgba(255,255,255,0.38)" }}>
+              <div className="eyebrow">{label}</div>
+              <code className="mt-4 block whitespace-pre-wrap rounded-sm p-4 data text-[12px]"
+                style={{ background: "#14181d", color: "#ecece6" }}>{formula}</code>
+              <p className="mt-3 text-[13px] leading-6" style={{ color: "#4a525b" }}>{note}</p>
+            </div>
+          ))}
+          <div className="rounded-sm border p-5" style={{ borderColor: "rgba(0,0,0,0.12)", background: "rgba(255,255,255,0.38)" }}>
+            <div className="flex items-center justify-between gap-4">
+              <div className="eyebrow">Demo Confidence</div>
+              <ConfidenceBadge level={level} />
+            </div>
+            <div className="mt-4 space-y-4">
+              {controls.map(([key, label]) => (
+                <label key={key} className="block data text-[11px]" style={{ color: "#4a525b" }}>
+                  <span className="flex justify-between"><span>{label}</span><span>{weights[key]}%</span></span>
+                  <input type="range" min={0} max={100} value={weights[key]}
+                    onChange={(e) => setWeights((w) => ({ ...w, [key]: Number(e.target.value) }))}
+                    className="mt-2 h-1 w-full cursor-pointer appearance-none rounded-full"
+                    style={{ background: "linear-gradient(90deg, var(--color-signal-dim), var(--color-signal))" }} />
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
     </Section>
   );
 }
@@ -335,7 +596,7 @@ export function Model() {
     };
   }, []);
   return (
-    <Section id="model" index="11" eyebrow="The Engine" variant="paper"
+    <Section id="model" index="15" eyebrow="The Engine" variant="paper"
       title="How the model reads the sky."
       lede="A CNN learns the spatial shape of pollution; an LSTM remembers how it evolves in time. Together they turn columns into surface concentrations.">
       <div ref={ref} className="mt-12">
@@ -363,7 +624,7 @@ export function Model() {
 /* ====================================================== 12 · RESULTS */
 export function Results() {
   return (
-    <Section id="results" index="12" eyebrow="The Evidence" variant="paper"
+    <Section id="results" index="16" eyebrow="Validation" variant="paper"
       title="Validated against the ground."
       lede="Predicted surface concentrations are checked against CPCB stations with held-out, leave-station-out and temporal splits.">
       <div className="mt-12 grid grid-cols-2 gap-8 md:grid-cols-4">
@@ -396,7 +657,7 @@ const INSIGHTS = [
 ];
 export function Insights() {
   return (
-    <Section id="insights" index="13" eyebrow="The Discoveries" variant="paper"
+    <Section id="insights" index="17" eyebrow="The Discoveries" variant="paper"
       title="What the data revealed.">
       <div className="mt-10">
         {INSIGHTS.map(([big, small], i) => (
@@ -421,7 +682,7 @@ const APPS = [
 ];
 export function Future() {
   return (
-    <Section id="applications" index="14" eyebrow="The Reach" variant="paper"
+    <Section id="applications" index="18" eyebrow="The Reach" variant="paper"
       title="From orbit to policy.">
       <div className="mt-12 grid grid-cols-1 gap-px sm:grid-cols-2 md:grid-cols-3"
         style={{ background: "rgba(0,0,0,0.12)" }}>
@@ -449,7 +710,7 @@ export function FinalImpact() {
     if (reduce) { spans.forEach((s) => (s.style.transform = "none")); return; }
     const io = new IntersectionObserver((es) => es.forEach((e) => {
       if (!e.isIntersecting) return; io.disconnect();
-      animate(spans, { translateY: ["110%", "0%"], duration: 1400, delay: (_: HTMLElement, i: number) => i * 120, ease: "cubicBezier(0.16,1,0.3,1)" });
+      animate(spans, { translateY: ["110%", "0%"], duration: 1400, delay: (_: HTMLElement, i: number) => i * 120, ease: RESOLVE });
     }), { threshold: 0.4 });
     io.observe(el); return () => io.disconnect();
   }, []);
@@ -470,29 +731,40 @@ export function FinalImpact() {
 /* ====================================================== 16/17 · FOOTER */
 export function Footer() {
   const cols = [
-    ["Datasets", ["INSAT-3D AOD (MOSDAC)", "Sentinel-5P TROPOMI", "ERA5 reanalysis", "CPCB CAAQMS", "MODIS / VIIRS fire", "ESA WorldCover · SRTM"]],
-    ["Methodology", ["Surface-pollutant retrieval", "CNN-LSTM model", "CPCB AQI engine", "PHV / Gi* / DBSCAN", "Transport analysis"]],
-    ["Research", ["Objectives 1–3", "Validation & metrics", "HCHO source attribution", "Publication (in prep.)"]],
+    ["Data Sources", ["INSAT-3D AOD (MOSDAC)", "Sentinel-5P TROPOMI", "CPCB CAAQMS", "ERA5 / IMDAA", "MODIS / VIIRS fire"]],
+    ["Prototype Status", ["Interactive sample geospatial layers", "Real-data pipeline ready", "Decision-support, not measurement replacement", "Validation-first roadmap"]],
+    ["Jump To", ["Methodology", "Evidence", "AQI Map", "Policy Actions"]],
   ];
   return (
     <footer id="footer" className="relative border-t hairline">
       <div className="mx-auto max-w-[1280px] px-6 py-20 md:px-16">
-        <div className="serif text-2xl">VAYU — India&apos;s air, observed.</div>
+        <div className="serif text-3xl">VAYU — BharatAir Sentinel</div>
+        <p className="mt-4 max-w-[760px] text-[15px] leading-7" style={{ color: "var(--color-text-2)" }}>
+          Built for Bharatiya Antariksh Hackathon 2026 · Challenge 03. Interactive prototype using sample
+          geospatial layers, designed for Sentinel-5P, INSAT-3D, CPCB, ERA5/IMDAA and MODIS/VIIRS integration.
+        </p>
         <div className="mt-12 grid grid-cols-1 gap-10 md:grid-cols-3">
           {cols.map(([h, items]) => (
             <div key={h as string}>
               <div className="eyebrow mb-4">{h as string}</div>
               <ul className="space-y-2">
-                {(items as string[]).map((it) => (
-                  <li key={it} className="data text-[13px]" style={{ color: "var(--color-text-2)" }}>{it}</li>
-                ))}
+                {(items as string[]).map((it) => {
+                  const href: Record<string, string> = {
+                    Methodology: "#pipeline", Evidence: "#evidence", "AQI Map": "#aqi", "Policy Actions": "#policy-action",
+                  };
+                  return (
+                    <li key={it} className="data text-[13px]" style={{ color: "var(--color-text-2)" }}>
+                      {href[it] ? <a href={href[it]}>{it}</a> : it}
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           ))}
         </div>
         <div className="hairline mt-16 flex flex-wrap items-center justify-between gap-4 border-t pt-6 data text-[11px]" style={{ color: "var(--color-text-3)" }}>
-          <span>Development of Surface AQI &amp; Identification of HCHO Hotspots over India using Satellite Data</span>
-          <span>ISRO research project · synthetic-data preview build</span>
+          <a href="https://github.com/aksh08022006/vayu-aqi-hcho" target="_blank" rel="noreferrer">github.com/aksh08022006/vayu-aqi-hcho</a>
+          <span>Team: VAYU · sample-data preview build</span>
         </div>
       </div>
     </footer>

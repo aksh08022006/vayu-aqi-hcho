@@ -1,7 +1,9 @@
 "use client";
 import { useEffect, useRef } from "react";
-import { createScope, createTimeline, stagger, utils } from "animejs";
+import { createScope, createTimeline, cubicBezier, stagger, utils } from "animejs";
 import { IndiaField } from "./IndiaField";
+
+const RESOLVE = cubicBezier(0.16, 1, 0.3, 1);
 
 export function Hero() {
   const root = useRef<HTMLElement>(null);
@@ -15,7 +17,7 @@ export function Hero() {
         return;
       }
       const start = 2500; // reveal as the preloader lifts
-      createTimeline({ defaults: { ease: "cubicBezier(0.16, 1, 0.3, 1)" } })
+      createTimeline({ defaults: { ease: RESOLVE } })
         .add(".hero-line > span", { translateY: ["110%", "0%"], duration: 950, delay: stagger(100) }, start)
         .add(".hero-eyebrow", { opacity: [0, 1], duration: 600 }, start)
         .add(".hero-sub", { opacity: [0, 1], translateY: [16, 0], duration: 700 }, start + 700)
@@ -51,16 +53,16 @@ export function Hero() {
           <span className="reveal-line hero-line"><span>Has a Story.</span></span>
         </h1>
         <p className="hero-sub hero-fade lede mt-8 max-w-[520px] text-[clamp(1.05rem,1.6vw,1.4rem)]">
-          Understanding India&apos;s air quality through satellites, atmospheric
-          science, and artificial intelligence.
+          A satellite-derived decision-support prototype for surface AQI,
+          HCHO/VOC hotspots, fire influence and atmospheric transport over India.
         </p>
         <div className="mt-10 flex flex-wrap items-center gap-4">
           <a
-            href="#aqi"
+            href="#mission-snapshot"
             className="hero-cta hero-fade data rounded-full px-7 py-3 text-[13px] font-medium transition-colors"
             style={{ border: "1px solid var(--color-signal)", color: "var(--color-signal)" }}
           >
-            Explore Air Quality →
+            Start 90-second demo →
           </a>
           <a
             href="#pipeline"

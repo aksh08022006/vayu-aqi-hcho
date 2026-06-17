@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useRef } from "react";
-import { animate, createDrawable, stagger, utils } from "animejs";
+import { animate, createDrawable, cubicBezier, stagger, utils } from "animejs";
+
+const DRAW_EASE = cubicBezier(0.65, 0, 0.35, 1);
 
 /** Draws matching SVG paths (default `.draw`) once when the container enters view. */
 export function useDrawOnEnter<T extends HTMLElement = HTMLDivElement>(selector = ".draw") {
@@ -20,7 +22,7 @@ export function useDrawOnEnter<T extends HTMLElement = HTMLDivElement>(selector 
         io.disconnect();
         animate(draw, {
           draw: ["0 0", "0 1"], duration: 900,
-          delay: stagger(140), ease: "cubicBezier(0.65,0,0.35,1)",
+          delay: stagger(140), ease: DRAW_EASE,
         });
       }),
       { threshold: 0.3 }

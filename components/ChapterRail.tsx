@@ -2,14 +2,16 @@
 import { useEffect, useRef, useState } from "react";
 
 const CHAPTERS = [
-  ["01", "Hero", "hero"], ["02", "Air Quality", "air-quality"],
-  ["03", "Why Satellites", "satellites"], ["04", "Data Pipeline", "pipeline"],
-  ["05", "Observations", "observations"], ["06", "AQI over India", "aqi"],
-  ["07", "Understanding HCHO", "hcho"], ["08", "Hotspots", "hotspots"],
-  ["09", "Biomass Burning", "biomass"], ["10", "Transport", "transport"],
-  ["11", "Model", "model"], ["12", "Results", "results"],
-  ["13", "Insights", "insights"], ["14", "Applications", "applications"],
-  ["15", "Impact", "impact"],
+  ["01", "Hero", "hero"], ["02", "Snapshot", "mission-snapshot"],
+  ["03", "Air Quality", "air-quality"], ["04", "Signals", "signals"],
+  ["05", "Monitor Gap", "satellites"], ["06", "Pipeline", "pipeline"],
+  ["07", "Observations", "observations"], ["08", "AQI Map", "aqi"],
+  ["09", "HCHO", "hcho"], ["10", "Hotspots", "hotspots"],
+  ["11", "Burning", "biomass"], ["12", "Transport", "transport"],
+  ["13", "Action", "policy-action"], ["14", "Evidence", "evidence"],
+  ["15", "Model", "model"], ["16", "Results", "results"],
+  ["17", "Insights", "insights"], ["18", "Applications", "applications"],
+  ["19", "Impact", "impact"],
 ];
 
 export function ChapterRail() {

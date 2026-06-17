@@ -5,8 +5,9 @@ import { Hero } from "@/components/Hero";
 import { Pipeline } from "@/components/Pipeline";
 import { Section } from "@/components/Section";
 import {
-  AirQuality, WhySatellites, Observations, AQIIndia, HCHO, Hotspots,
-  Biomass, Transport, Model, Results, Insights, Future, FinalImpact, Footer,
+  MissionSnapshot, AirQuality, Signals, WhySatellites, Observations, AQIIndia,
+  HCHO, Hotspots, Biomass, Transport, PolicyActionBoard, Evidence,
+  Model, Results, Insights, Future, FinalImpact, Footer,
 } from "@/components/sections";
 
 export default function Home() {
@@ -17,14 +18,16 @@ export default function Home() {
       <ThemeToggle />
       <main>
         <Hero />
+        <MissionSnapshot />
         <AirQuality />
+        <Signals />
         <WhySatellites />
         <Section
           id="pipeline"
-          index="04"
+          index="06"
           eyebrow="The Method"
           title="From raw signal to insight."
-          lede="Six observation streams are fused, processed, learned by a CNN-LSTM, and turned into AQI maps and HCHO hotspots — one continuous scientific system."
+          lede="Six observation streams are fused, quality-screened, gridded and converted into AQI maps, HCHO anomaly layers and source-attribution hypotheses."
         >
           <Pipeline />
         </Section>
@@ -34,6 +37,8 @@ export default function Home() {
         <Hotspots />
         <Biomass />
         <Transport />
+        <PolicyActionBoard />
+        <Evidence />
         <Model />
         <Results />
         <Insights />
