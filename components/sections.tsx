@@ -55,10 +55,10 @@ function AqiLegend() {
 const SNAPSHOT = [
   ["Highest AQI Region", "Delhi NCR", "Very Poor risk corridor"],
   ["Strongest HCHO Hotspot", "Western UP", "VOC anomaly cluster"],
-  ["Fire-linked Hotspots", "12", "sample VIIRS/MODIS-linked clusters"],
+  ["Fire-linked Hotspots", "91", "real MODIS-attributed HCHO clusters"],
   ["Dominant Pollutant", "PM2.5", "aerosol-driven AQI signal"],
   ["Transport Risk", "High", "Punjab/Haryana -> Delhi NCR pathway"],
-  ["Prototype Status", "Demo Mode", "sample layers · real-data pipeline ready"],
+  ["Data Status", "Real satellite layers", "TROPOMI/MODIS observed · AQI = model estimate"],
 ];
 
 export function MissionSnapshot() {
@@ -68,9 +68,9 @@ export function MissionSnapshot() {
       lede="A judge-facing snapshot of how VAYU converts satellite observations, fire activity and atmospheric transport into AQI and HCHO hotspot intelligence.">
       <div className="mt-8 inline-flex max-w-full flex-wrap gap-2 rounded-sm border px-3 py-2 data text-[11px]"
         style={{ borderColor: "var(--line)", color: "var(--color-text-2)", background: "rgba(255,255,255,0.03)" }}>
-        <span style={{ color: "var(--color-signal)" }}>Interactive Prototype</span>
-        <span>Sample Geospatial Layers</span>
-        <span>Real-Data Pipeline Ready</span>
+        <span style={{ color: "var(--color-signal)" }}>Real TROPOMI · MODIS Layers</span>
+        <span>Post-monsoon 2021 · India</span>
+        <span>AQI = hybrid-model estimate</span>
       </div>
       <div className="mt-10 grid grid-cols-1 gap-px overflow-hidden rounded-sm border sm:grid-cols-2 lg:grid-cols-3"
         style={{ borderColor: "var(--line)", background: "var(--line)" }}>
