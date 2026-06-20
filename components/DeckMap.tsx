@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import { MapboxOverlay } from "@deck.gl/mapbox";
-import { ScatterplotLayer, PathLayer, PolygonLayer } from "@deck.gl/layers";
+import { ScatterplotLayer, PathLayer, PolygonLayer, BitmapLayer } from "@deck.gl/layers";
 import { AQI_STOPS } from "@/lib/india";
 
 type Mode = "aqi" | "gas" | "hotspots" | "transport";
@@ -40,23 +40,100 @@ const STYLE: maplibregl.StyleSpecification = {
   ],
 };
 
-const aqiRGB = (v: number): RGB =>
-  v <= 50 ? [0, 152, 101] : v <= 100 ? [132, 207, 51] : v <= 200 ? [255, 210, 31]
-    : v <= 300 ? [242, 169, 59] : v <= 400 ? [234, 51, 36] : [156, 46, 44];
-
-const GAS_RAMP: Record<string, RGB[]> = {
-  aod: [[12, 18, 22], [232, 195, 158], [138, 90, 43]],
-  no2: [[12, 18, 22], [140, 40, 120], [255, 180, 120]],
-  so2: [[12, 18, 22], [40, 90, 90], [150, 230, 200]],
-  co: [[12, 18, 22], [40, 70, 120], [140, 200, 255]],
-  o3: [[12, 18, 22], [40, 90, 40], [160, 230, 120]],
-  hcho: [[24, 18, 14], [255, 210, 31], [234, 51, 36]],
+/* =====================================================================
+ * Premium smooth scientific fields.
+ * Each pollutant grid is rendered as a value image (one pixel per cell)
+ * shown through deck.gl BitmapLayer with GPU bilinear filtering, so cells
+ * blend into continuous atmospheric gradients instead of hard squares.
+ * A NaN-aware Gaussian pre-smooth adds diffusion; opacity scales with the
+ * value (low = transparent, high = visible) and feathers to 0 at edges.
+ * ===================================================================== */
+type Stop = [number, RGB];
+// PM2.5-style AQI ramp (IQAir/Windy feel): blue→green→yellow→orange→red→deep purple
+const AQI_FIELD: Stop[] = [
+  [0, [122, 170, 210]], [0.1, [122, 170, 210]], [0.2, [120, 190, 120]],
+  [0.4, [235, 215, 110]], [0.6, [238, 165, 80]], [0.8, [216, 84, 70]], [1, [135, 75, 155]],
+];
+// per-gas perceptual ramps (soft, non-neon)
+const FIELD_RAMP: Record<string, Stop[]> = {
+  aod: [[0, [225, 210, 180]], [0.5, [210, 160, 90]], [1, [120, 75, 45]]],
+  no2: [[0, [110, 200, 210]], [0.34, [80, 130, 210]], [0.7, [235, 150, 70]], [1, [210, 70, 60]]],
+  so2: [[0, [120, 190, 130]], [0.34, [225, 215, 110]], [0.7, [235, 150, 70]], [1, [150, 45, 45]]],
+  co: [[0, [200, 210, 225]], [0.5, [100, 140, 210]], [1, [60, 60, 140]]],
+  o3: [[0, [120, 205, 195]], [0.34, [120, 190, 120]], [0.7, [235, 180, 90]], [1, [210, 75, 60]]],
+  hcho: [[0, [235, 225, 150]], [0.4, [240, 170, 80]], [0.7, [225, 90, 70]], [1, [140, 70, 150]]],
 };
-function rampColor(stops: RGB[], t: number): RGB {
-  const n = stops.length - 1;
-  const f = Math.min(0.999, Math.max(0, t)) * n;
-  const i = Math.floor(f), k = f - i, a = stops[i], b = stops[i + 1];
-  return [0, 1, 2].map((j) => Math.round(a[j] + (b[j] - a[j]) * k)) as RGB;
+function interpRamp(stops: Stop[], t: number): RGB {
+  if (t <= stops[0][0]) return stops[0][1];
+  for (let i = 1; i < stops.length; i++) {
+    if (t <= stops[i][0]) {
+      const [p0, c0] = stops[i - 1], [p1, c1] = stops[i];
+      const k = (t - p0) / (p1 - p0 || 1);
+      return [0, 1, 2].map((j) => Math.round(c0[j] + (c1[j] - c0[j]) * k)) as RGB;
+    }
+  }
+  return stops[stops.length - 1][1];
+}
+function gradFromStops(stops: Stop[]): string {
+  return `linear-gradient(90deg, ${stops
+    .map(([p, c]) => `rgb(${c[0]},${c[1]},${c[2]}) ${Math.round(p * 100)}%`)
+    .join(", ")})`;
+}
+// NaN-aware Gaussian blur over the regular grid (atmospheric diffusion)
+function blurNaN(a: Float32Array, cols: number, rows: number, r: number) {
+  if (r <= 0) return;
+  const src = Float32Array.from(a), s2 = 2 * 0.9 * 0.9;
+  for (let y = 0; y < rows; y++)
+    for (let x = 0; x < cols; x++) {
+      let sum = 0, w = 0;
+      for (let dy = -r; dy <= r; dy++)
+        for (let dx = -r; dx <= r; dx++) {
+          const xx = x + dx, yy = y + dy;
+          if (xx < 0 || xx >= cols || yy < 0 || yy >= rows) continue;
+          const v = src[yy * cols + xx];
+          if (!Number.isFinite(v)) continue;
+          const wt = Math.exp(-(dx * dx + dy * dy) / s2);
+          sum += v * wt; w += wt;
+        }
+      a[y * cols + x] = w > 0 ? sum / w : NaN;
+    }
+}
+type FieldOpts = { lo?: number; hi?: number; aMin?: number; aMax?: number; blur?: number };
+// Build a value image (one pixel per grid cell) + lng/lat bounds for BitmapLayer.
+function buildField(pts: number[][], stops: Stop[], o: FieldOpts) {
+  if (!pts.length || typeof document === "undefined") return null;
+  const { lo = 0, hi = 1, aMin = 0.18, aMax = 0.72, blur = 1 } = o;
+  const lons = Array.from(new Set(pts.map((p) => p[0]))).sort((a, b) => a - b);
+  const lats = Array.from(new Set(pts.map((p) => p[1]))).sort((a, b) => a - b);
+  let res = Infinity;
+  for (let i = 1; i < lons.length; i++) res = Math.min(res, lons[i] - lons[i - 1]);
+  if (!Number.isFinite(res) || res <= 0) res = 0.5;
+  const minLon = lons[0], maxLon = lons[lons.length - 1], minLat = lats[0], maxLat = lats[lats.length - 1];
+  const cols = Math.round((maxLon - minLon) / res) + 1;
+  const rows = Math.round((maxLat - minLat) / res) + 1;
+  const val = new Float32Array(cols * rows).fill(NaN);
+  for (const p of pts) {
+    if (!Number.isFinite(p[2])) continue;
+    const x = Math.round((p[0] - minLon) / res), y = Math.round((maxLat - p[1]) / res);
+    if (x >= 0 && x < cols && y >= 0 && y < rows) val[y * cols + x] = p[2];
+  }
+  blurNaN(val, cols, rows, blur);
+  const cv = document.createElement("canvas");
+  cv.width = cols; cv.height = rows;
+  const ctx = cv.getContext("2d");
+  if (!ctx) return null;
+  const img = ctx.createImageData(cols, rows);
+  for (let i = 0; i < cols * rows; i++) {
+    const v = val[i];
+    if (!Number.isFinite(v)) { img.data[i * 4 + 3] = 0; continue; }
+    const t = Math.min(1, Math.max(0, (v - lo) / (hi - lo)));
+    const [r, g, b] = interpRamp(stops, t);
+    img.data[i * 4] = r; img.data[i * 4 + 1] = g; img.data[i * 4 + 2] = b;
+    img.data[i * 4 + 3] = Math.round((aMin + (aMax - aMin) * Math.pow(t, 0.85)) * 255);
+  }
+  ctx.putImageData(img, 0, 0);
+  const half = res / 2;
+  return { image: cv, bounds: [minLon - half, minLat - half, maxLon + half, maxLat + half] as [number, number, number, number] };
 }
 const SOURCE_RGB: Record<string, RGB> = {
   agri_burning: [255, 122, 69], urban: [167, 139, 250], industrial: [242, 169, 59],
@@ -90,10 +167,6 @@ function sourceLabel(source: string) {
 const GAS_LABEL: Record<string, string> = {
   aod: "AOD", no2: "NO₂", so2: "SO₂", co: "CO", o3: "O₃", hcho: "HCHO",
 };
-const grad = (stops: RGB[]) =>
-  `linear-gradient(90deg, ${stops
-    .map((c, i) => `rgb(${c[0]},${c[1]},${c[2]}) ${(i / (stops.length - 1)) * 100}%`)
-    .join(", ")})`;
 
 function MapLegend({ mode, gas }: { mode: Mode; gas: string }) {
   const box: React.CSSProperties = {
@@ -106,10 +179,11 @@ function MapLegend({ mode, gas }: { mode: Mode; gas: string }) {
   if (mode === "aqi")
     return (
       <div style={box}>
-        <div style={title}>AQI · CPCB</div>
-        {AQI_STOPS.map((s) => (
+        <div style={title}>Air Quality Index</div>
+        {AQI_STOPS.map((s, i) => (
           <div key={s.label} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, lineHeight: "16px" }}>
-            <span style={{ width: 11, height: 11, background: s.color, borderRadius: 2, display: "inline-block" }} />
+            <span style={{ width: 11, height: 11, borderRadius: 2, display: "inline-block",
+              background: `rgb(${interpRamp(AQI_FIELD, (i === 0 ? 25 : (AQI_STOPS[i - 1].max + s.max) / 2) / 500).join(",")})` }} />
             <span style={{ color: "#a7aeb6" }}>{s.label}</span>
             <span style={{ color: "#6b7480", marginLeft: "auto", paddingLeft: 10 }}>≤{s.max}</span>
           </div>
@@ -117,12 +191,12 @@ function MapLegend({ mode, gas }: { mode: Mode; gas: string }) {
       </div>
     );
 
-  const rampStops = mode === "gas" ? GAS_RAMP[gas] ?? GAS_RAMP.hcho : GAS_RAMP.hcho;
+  const rampStops = mode === "gas" ? FIELD_RAMP[gas] ?? FIELD_RAMP.hcho : FIELD_RAMP.hcho;
   const label = mode === "gas" ? `${GAS_LABEL[gas] ?? gas} column` : "HCHO column";
   return (
     <div style={box}>
       <div style={title}>{label}</div>
-      <div style={{ width: 132, height: 9, borderRadius: 2, background: grad(rampStops) }} />
+      <div style={{ width: 132, height: 9, borderRadius: 2, background: gradFromStops(rampStops) }} />
       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#6b7480", marginTop: 4 }}>
         <span>low</span><span>high</span>
       </div>
@@ -199,28 +273,43 @@ export function DeckMap({
     const { mode: m, frame: fr, gas: g, aqiKind: ak } = props.current;
     const layers: unknown[] = [];
 
-    const HALF = 0.25; // 0.5° grid -> real geographic raster cells
+    const HALF = 0.25; // 0.5° grid cell half-width (for the invisible pick grid)
     const cellPoly = (lon: number, lat: number) =>
       [[lon - HALF, lat - HALF], [lon + HALF, lat - HALF], [lon + HALF, lat + HALF], [lon - HALF, lat + HALF]];
-    const grid = (rows: number[][], color: (v: number) => RGB, alpha = 185, id = "grid", vi = 2) =>
-      new PolygonLayer({
-        id, data: rows, getPolygon: (x: number[]) => cellPoly(x[0], x[1]),
-        getFillColor: (x: number[]) => [...color(x[vi]), alpha] as [number, number, number, number],
-        stroked: false, filled: true, pickable: true,
-        updateTriggers: { getFillColor: [id, fr, g, vi] },
-      });
+
+    // Smooth field = BitmapLayer (GPU bilinear) + an invisible pickable grid for the hover readout.
+    const field = (
+      visPts: number[][], stops: Stop[], opts: FieldOpts, id: string,
+      pickData?: number[][], pick = true,
+    ) => {
+      const f = buildField(visPts, stops, opts);
+      if (f)
+        layers.push(new BitmapLayer({
+          id: `${id}-img`, image: f.image, bounds: f.bounds, opacity: 1, pickable: false,
+          textureParameters: {
+            minFilter: "linear", magFilter: "linear",
+            addressModeU: "clamp-to-edge", addressModeV: "clamp-to-edge",
+          },
+        }));
+      if (pick)
+        layers.push(new PolygonLayer({
+          id, data: pickData ?? visPts, getPolygon: (x: number[]) => cellPoly(x[0], x[1]),
+          getFillColor: [0, 0, 0, 0], stroked: false, filled: true, pickable: true,
+        }));
+    };
 
     if (m === "aqi" && Array.isArray(d.aqi?.frames) && d.aqi.frames.length > 0) {
       const f = d.aqi.frames[Math.min(fr, d.aqi.frames.length - 1)];
-      // CPCB = column 2, RAPI (Hong-Kong entropy) = column 3 of each cell
-      if (Array.isArray(f?.cells)) layers.push(grid(f.cells, aqiRGB, 200, "aqi", ak === "rapi" ? 3 : 2));
+      const vi = ak === "rapi" ? 3 : 2; // CPCB = column 2, RAPI = column 3
+      if (Array.isArray(f?.cells))
+        field(f.cells.map((c: number[]) => [c[0], c[1], c[vi]]), AQI_FIELD, { lo: 0, hi: 500 }, "aqi", f.cells);
     }
     if (m === "gas" && Array.isArray(d.gas?.cells)) {
-      const rows = d.gas.cells.map((c: any) => [c.lon, c.lat, c[g]]).filter((r: number[]) => Number.isFinite(r[2]));
-      layers.push(grid(rows, (v) => rampColor(GAS_RAMP[g] ?? GAS_RAMP.hcho, v), 195, "gas"));
+      const pts = d.gas.cells.map((c: any) => [c.lon, c.lat, c[g]]);
+      field(pts, FIELD_RAMP[g] ?? FIELD_RAMP.hcho, { lo: 0, hi: 1 }, "gas");
     }
     if (m === "hotspots" && Array.isArray(d.hcho)) {
-      layers.push(grid(d.hcho, (v) => rampColor(GAS_RAMP.hcho, v), 150, "hcho-base"));
+      field(d.hcho, FIELD_RAMP.hcho, { lo: 0, hi: 1, aMin: 0.12, aMax: 0.6 }, "hcho-base", undefined, false);
       if (Array.isArray(d.hotspots)) {
         const hotspots = d.hotspots.map((x: Hotspot, i: number) => ({ ...x, _i: i }));
         layers.push(new ScatterplotLayer({
@@ -238,7 +327,7 @@ export function DeckMap({
       }
     }
     if (m === "transport") {
-      if (Array.isArray(d.hcho)) layers.push(grid(d.hcho, (v) => rampColor(GAS_RAMP.hcho, v), 110, "hcho-base"));
+      if (Array.isArray(d.hcho)) field(d.hcho, FIELD_RAMP.hcho, { lo: 0, hi: 1, aMin: 0.08, aMax: 0.42 }, "hcho-base", undefined, false);
       if (Array.isArray(d.fires))
         layers.push(new ScatterplotLayer({
           id: "fires", data: d.fires, getPosition: (x: number[]) => [x[0], x[1]],
