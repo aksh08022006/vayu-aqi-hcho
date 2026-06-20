@@ -32,8 +32,11 @@ const STYLE: maplibregl.StyleSpecification = {
   },
   layers: [
     { id: "bg", type: "background", paint: { "background-color": "#07090c" } },
-    { id: "carto", type: "raster", source: "carto", paint: { "raster-opacity": 0.85 } },
-    { id: "iline", type: "line", source: "india", paint: { "line-color": "#5fe3d2", "line-width": 1, "line-opacity": 0.35 } },
+    { id: "carto", type: "raster", source: "carto", paint: { "raster-opacity": 0.7 } },
+    // faint land tint so India reads clearly against the ocean
+    { id: "ifill", type: "fill", source: "india", paint: { "fill-color": "#123b3a", "fill-opacity": 0.16 } },
+    // crisp official boundary
+    { id: "iline", type: "line", source: "india", paint: { "line-color": "#5fe3d2", "line-width": 1.4, "line-opacity": 0.6 } },
   ],
 };
 
@@ -172,43 +175,45 @@ function HotspotCard({ hotspot }: { hotspot: Hotspot | null }) {
 }
 
 export function DeckMap({
-  mode, frame = 0, gas = "hcho", height = 560, onReadout,
+  mode, frame = 0, gas = "hcho", height = 560, onReadout, aqiKind = "cpcb",
 }: {
   mode: Mode;
   frame?: number;
   gas?: string;
   height?: number;
   onReadout?: (s: string | null) => void;
+  aqiKind?: "cpcb" | "rapi";   // which AQI index the 'aqi' mode colours by
 }) {
   const wrap = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const overlay = useRef<MapboxOverlay | null>(null);
   const data = useRef<Record<string, unknown>>({});
-  const props = useRef({ mode, frame, gas });
+  const props = useRef({ mode, frame, gas, aqiKind });
   const [layerStatus, setLayerStatus] = useState<LayerStatus>("loading");
   const [layerMessage, setLayerMessage] = useState("Loading atmospheric layer...");
   const [selectedHotspot, setSelectedHotspot] = useState<Hotspot | null>(null);
-  props.current = { mode, frame, gas };
+  props.current = { mode, frame, gas, aqiKind };
 
   const build = () => {
     const d = data.current as Record<string, any>;
-    const { mode: m, frame: fr, gas: g } = props.current;
+    const { mode: m, frame: fr, gas: g, aqiKind: ak } = props.current;
     const layers: unknown[] = [];
 
     const HALF = 0.25; // 0.5° grid -> real geographic raster cells
     const cellPoly = (lon: number, lat: number) =>
       [[lon - HALF, lat - HALF], [lon + HALF, lat - HALF], [lon + HALF, lat + HALF], [lon - HALF, lat + HALF]];
-    const grid = (rows: number[][], color: (v: number) => RGB, alpha = 185, id = "grid") =>
+    const grid = (rows: number[][], color: (v: number) => RGB, alpha = 185, id = "grid", vi = 2) =>
       new PolygonLayer({
         id, data: rows, getPolygon: (x: number[]) => cellPoly(x[0], x[1]),
-        getFillColor: (x: number[]) => [...color(x[2]), alpha] as [number, number, number, number],
+        getFillColor: (x: number[]) => [...color(x[vi]), alpha] as [number, number, number, number],
         stroked: false, filled: true, pickable: true,
-        updateTriggers: { getFillColor: [id, fr, g] },
+        updateTriggers: { getFillColor: [id, fr, g, vi] },
       });
 
     if (m === "aqi" && Array.isArray(d.aqi?.frames) && d.aqi.frames.length > 0) {
       const f = d.aqi.frames[Math.min(fr, d.aqi.frames.length - 1)];
-      if (Array.isArray(f?.cells)) layers.push(grid(f.cells, aqiRGB, 200, "aqi"));
+      // CPCB = column 2, RAPI (Hong-Kong entropy) = column 3 of each cell
+      if (Array.isArray(f?.cells)) layers.push(grid(f.cells, aqiRGB, 200, "aqi", ak === "rapi" ? 3 : 2));
     }
     if (m === "gas" && Array.isArray(d.gas?.cells)) {
       const rows = d.gas.cells.map((c: any) => [c.lon, c.lat, c[g]]).filter((r: number[]) => Number.isFinite(r[2]));
@@ -252,7 +257,11 @@ export function DeckMap({
   const tooltip = ({ object, layer }: any) => {
     if (!object) { onReadout?.(null); return null; }
     let txt = "";
-    if (layer.id === "aqi") txt = `AQI ${object[2]} · ${object[0]}, ${object[1]}`;
+    if (layer.id === "aqi") {
+      const ak = props.current.aqiKind;
+      const vi = ak === "rapi" ? 3 : 2;
+      txt = `${ak === "rapi" ? "RAPI" : "AQI"} ${object[vi]} · ${object[0]}, ${object[1]}`;
+    }
     else if (layer.id === "gas") txt = `${props.current.gas.toUpperCase()} ${(object[2] * 100).toFixed(0)}% · ${object[0]}, ${object[1]}`;
     else if (layer.id === "hotspots") {
       setSelectedHotspot(object as Hotspot);
@@ -324,7 +333,7 @@ export function DeckMap({
   useEffect(() => {
     overlay.current?.setProps({ layers: build() as any });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [frame, gas, mode]);
+  }, [frame, gas, mode, aqiKind]);
 
   return (
     <div className="relative overflow-hidden rounded-sm" style={{ width: "100%", height }}>
