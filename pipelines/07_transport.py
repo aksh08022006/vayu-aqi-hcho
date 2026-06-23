@@ -5,6 +5,10 @@ Quantifies whether upwind biomass-burning feeds a receptor city's HCHO: trace th
 air parcel back along ERA5 winds and count VIIRS fire pixels within a radius of the
 path. Directional, mechanistic evidence (not just co-located correlation).
 
+STATUS: SCAFFOLD. This numbered CLI documents the intended wiring but is NOT
+implemented. The working back-trajectory + fire-along-path analysis runs in
+pipelines/run_demo.py (synthetic) and pipelines/fetch_real_web.py (real ERA5). Use those.
+
     python pipelines/07_transport.py --config config/config.yaml \
         [--receptor delhi] [--date 2021-11-05]
 """
@@ -34,7 +38,8 @@ def main():
     # fires = ...  # VIIRS pixels for the window
     # n = transport.fires_along_path(path, fires)  # did upwind fires feed this receptor?
     log.info(f"receptor={args.receptor} date={args.date}")
-    log.info("Wire: back_trajectory + fires_along_path (upwind fire -> receptor HCHO)")
+    log.info("SCAFFOLD ONLY — implemented in run_demo.py / fetch_real_web.py. "
+             "Intended wiring: back_trajectory + fires_along_path (upwind fire -> receptor HCHO)")
     _ = transport
 
 

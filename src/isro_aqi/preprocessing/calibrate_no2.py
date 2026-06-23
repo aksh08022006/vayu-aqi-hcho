@@ -58,7 +58,19 @@ class NO2Calibrator:
     def predict(self, df: pd.DataFrame) -> np.ndarray:
         if self.model is None:
             raise RuntimeError("call fit() first")
-        X = df.reindex(columns=self._cov_used).fillna(0.0).to_numpy()
+        # The model was fitted on self._cov_used; those columns MUST be present at
+        # predict time. Silently reindexing missing covariates to 0.0 (the old
+        # behaviour) would feed the RF a column of zeros and quietly corrupt the
+        # calibrated surface-NO2 field. Fail loudly instead.
+        missing = [c for c in self._cov_used if c not in df.columns]
+        if missing:
+            raise KeyError(
+                f"NO2Calibrator.predict: covariates missing from input grid: {missing}. "
+                f"Required: {self._cov_used}"
+            )
+        # Per-row NaNs in present covariates are still filled (the grid has gaps);
+        # the absence of an entire required column is what we refuse to tolerate.
+        X = df[self._cov_used].fillna(0.0).to_numpy()
         return self.model.predict(X)
 
     def report(self, df: pd.DataFrame) -> dict:

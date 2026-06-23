@@ -66,10 +66,10 @@ An augmented training table with derived columns appended, ready for RF/XGBoost;
 - **NaNs from early-record lags.** Mitigation: `rolling(min_periods=1)`; trees `fillna(0)`.
 
 ## Validation metrics
-Feature importance / SHAP ranking (expect T, SSRD, BLH, AOD high for O₃/PM); ablation ΔR² with vs without engineered features; correlation of `photo_index` and `aod_blh` with target residuals.
+RF feature-importance ranking (expect T, SSRD, BLH, AOD high for O₃/PM); ablation ΔR² with vs without engineered features; correlation of `photo_index` and `aod_blh` with target residuals. _(SHAP explainability was prototyped but removed in the redesign.)_
 
 ## Publication-quality figures
-- SHAP beeswarm per pollutant.
-- FNR regime map (VOC- vs NOₓ-limited) over India.
+- RF feature-importance bar per pollutant.
+- FNR feature map (HCHO/NO₂, VOC- vs NOₓ-limited proxy) over India.
 - Lag/rolling autocorrelation of PM2.5 during a stubble-burning episode.
 - Partial-dependence of O₃ on `photo_index` and BLH.

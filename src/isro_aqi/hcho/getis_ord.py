@@ -15,7 +15,6 @@ simultaneous local tests).
 from __future__ import annotations
 
 import numpy as np
-import pandas as pd
 import xarray as xr
 
 from isro_aqi.utils.logging import get_logger
@@ -80,12 +79,3 @@ def _benjamini_hochberg(p: np.ndarray) -> np.ndarray:
     out = np.empty(n)
     out[order] = np.clip(ranked, 0, 1)
     return out
-
-
-def summarise(ds: xr.Dataset) -> pd.DataFrame:
-    """Significant hotspot cells as a table (lon, lat, gi_z) for attribution."""
-    hot = ds["hotspot"].values
-    lon2d, lat2d = np.meshgrid(ds["lon"].values, ds["lat"].values)
-    return pd.DataFrame(
-        {"lon": lon2d[hot], "lat": lat2d[hot], "gi_z": ds["gi_z"].values[hot]}
-    ).sort_values("gi_z", ascending=False)

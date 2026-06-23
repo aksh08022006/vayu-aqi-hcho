@@ -16,16 +16,12 @@ const INPUTS = [
 const STAGES = [
   { id: "fusion", label: "Fusion", x: 360, y: 230, sub: "Co-register all sources onto one grid" },
   { id: "pre", label: "Processing", x: 530, y: 230, sub: "QA filter · regrid · collocate · features" },
-  { id: "ml", label: "CNN-LSTM", x: 700, y: 230, sub: "Spatial (CNN) + temporal (LSTM) learning" },
+  { id: "ml", label: "Random Forest", x: 700, y: 230, sub: "Per-pollutant predictor (deployed) · CNN-LSTM validated, not on map path" },
   { id: "aqi", label: "AQI Maps", x: 900, y: 150, sub: "Surface pollutants → CPCB AQI → daily maps" },
   { id: "hot", label: "Hotspots", x: 900, y: 310, sub: "PHV / Getis-Ord Gi* / DBSCAN detection" },
 ];
 const VBW = 1000, VBH = 460;
 const inY = (i: number) => 50 + i * 72;
-const node = (id: string) =>
-  id === "fusion" || id === "pre" || id === "ml" || id === "aqi" || id === "hot"
-    ? STAGES.find((s) => s.id === id)!
-    : null;
 
 function edgePath(x1: number, y1: number, x2: number, y2: number) {
   const dx = (x2 - x1) * 0.5;
@@ -74,7 +70,8 @@ export function Pipeline() {
 
   return (
     <div ref={root} className="mt-14">
-      <svg viewBox={`0 0 ${VBW} ${VBH}`} className="w-full" style={{ overflow: "visible" }}>
+      <svg viewBox={`0 0 ${VBW} ${VBH}`} className="w-full" style={{ overflow: "visible" }}
+        role="img" aria-label="Data pipeline: six observation streams (INSAT-3D, Sentinel-5P, ERA5, CPCB, VIIRS, MODIS) fused, processed, and fed to a Random Forest predictor that produces AQI maps and HCHO hotspots.">
         {/* edges */}
         {EDGES.map((d, i) => (
           <path key={i} className="pl-edge" d={d} fill="none"
@@ -88,7 +85,8 @@ export function Pipeline() {
         {/* input nodes */}
         {INPUTS.map((n, i) => (
           <g key={n.id} className="pl-node" style={{ cursor: "pointer" }}
-            onMouseEnter={() => setActive(n)} onFocus={() => setActive(n)} tabIndex={0}>
+            onMouseEnter={() => setActive(n)} onFocus={() => setActive(n)} tabIndex={0}
+            role="img" aria-label={`${n.label}: ${n.sub}`}>
             <circle cx="120" cy={inY(i)} r="6" fill="none" stroke="var(--color-signal)" strokeWidth="1.4" />
             <text x="104" y={inY(i) + 4} textAnchor="end" className="data" fontSize="13"
               fill="var(--color-text-1)">{n.label}</text>
@@ -97,7 +95,8 @@ export function Pipeline() {
         {/* stage nodes */}
         {STAGES.map((s) => (
           <g key={s.id} className="pl-node" style={{ cursor: "pointer" }}
-            onMouseEnter={() => setActive(s)} onFocus={() => setActive(s)} tabIndex={0}>
+            onMouseEnter={() => setActive(s)} onFocus={() => setActive(s)} tabIndex={0}
+            role="img" aria-label={`${s.label}: ${s.sub}`}>
             <rect x={s.x - 62} y={s.y - 19} width="124" height="38" rx="4"
               fill="var(--color-ink-700)" stroke="rgba(255,255,255,0.18)" strokeWidth="1" />
             <text x={s.x} y={s.y + 4} textAnchor="middle" className="data" fontSize="13"

@@ -1,6 +1,8 @@
 # VAYU Redesign Plan — High-Resolution India AQI (Hong Kong RAPI × Shanghai spatial engine)
 
-**Status:** proposed (awaiting approval to build)
+> **STATUS: IMPLEMENTED / ARCHIVED — this plan has been executed; kept for rationale.**
+
+**Status:** implemented (the six changes below are live in the codebase)
 **Author:** redesign per problem-statement re-read + fact-checked deep research
 **Scope:** Objective 1 (surface AQI) and Objective 2 (HCHO hotspots), aligned to the
 ISRO problem statement and the 4 reference papers, with 6 targeted upgrades.

@@ -43,14 +43,14 @@ FNR regime indicator (HCHO/NO₂) for O₃ sensitivity [A][B]: FNR < 1 ⇒ VOC-l
 `numpy`, `pandas`, `scipy.stats` (entropy), `matplotlib`/`seaborn`, `bibtexparser` for reference management; figures via `cartopy`.
 
 ## Code in this repo
-The CPCB sub-index and max/entropy aggregation reviewed here are implemented in `src/isro_aqi/aqi/engine.py` (breakpoints in `config/aqi_breakpoints.yaml`); the PHV/HVA method [A] in `src/isro_aqi/hcho/phv.py` and `percentile.py`.
+The CPCB sub-index and max/entropy aggregation reviewed here are implemented in `src/isro_aqi/aqi/engine.py` (breakpoints in `config/aqi_breakpoints.yaml`); the PHV/HVA method [A] in `src/isro_aqi/hcho/phv.py`, with Getis-Ord Gi* (`getis_ord.py`) and scipy connected-component clusters (`source_attribution.py`) as extensions.
 
 ```python
 from isro_aqi.aqi.engine import sub_index, overall_aqi   # CPCB [C][D]
 ```
 
 ## Expected outputs
-A referenced gap analysis and a one-page novelty statement: **no prior study jointly delivers India-wide multi-pollutant AQI maps + HCHO hotspot atlas + quantified biomass-burning/transport attribution with SHAP-explainable DL.**
+A referenced gap analysis and a one-page novelty statement: **no prior study jointly delivers India-wide multi-pollutant AQI maps + HCHO hotspot atlas + quantified biomass-burning/transport attribution with a dual CPCB-max/entropy-RAPI index.**
 
 ## Potential challenges & mitigations
 - *Methodological heterogeneity across [A]–[D]* (different domains/resolutions) → harmonise to a common 0.1° (AQI) / 0.01° (HCHO) grid.

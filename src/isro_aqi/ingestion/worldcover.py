@@ -38,7 +38,14 @@ def fractional_cover(cfg: Config, scale_m: int = 7000) -> "ee.Image":
     for code, name in CLASSES.items():
         frac = (
             lc.eq(code)
-            .reduceResolution(reducer=ee.Reducer.mean(), maxPixels=1024)
+            # 10 m -> ~7 km is ~700^2 ~= 490k native pixels per output cell; the
+            # old maxPixels=1024 silently truncated the aggregation. GEE caps
+            # reduceResolution at 65535 input pixels, so we max it out here and
+            # aggregate in TWO stages (10 m -> ~1 km -> target) so each stage
+            # stays within the cap while still covering every input pixel.
+            .reduceResolution(reducer=ee.Reducer.mean(), maxPixels=65535)
+            .reproject(crs=cfg.grid.crs, scale=1000)
+            .reduceResolution(reducer=ee.Reducer.mean(), maxPixels=65535)
             .reproject(crs=cfg.grid.crs, scale=scale_m)
             .rename(f"lc_{name}")
         )

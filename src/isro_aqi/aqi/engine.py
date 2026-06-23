@@ -31,11 +31,21 @@ def sub_index(conc: float, breakpoints: list[list[float]]) -> float | None:
 
     breakpoints: list of [C_lo, C_hi, I_lo, I_hi]. Returns None if conc is NaN;
     concentrations above the top breakpoint are capped at the top band.
+
+    The CPCB bands have integer gaps ([0,30],[31,60],...). A value landing in a
+    gap (e.g. PM2.5=30.5) is assigned to the band whose lower bound it meets or
+    exceeds, by extending each band UP TO the next band's lower bound:
+    ``c_lo <= conc < next_c_lo``. The interpolation still uses the band's own
+    [C_lo, C_hi] so the result is sensible and the scalar/vector paths agree.
     """
     if conc is None or (isinstance(conc, float) and math.isnan(conc)) or conc < 0:
         return None
-    for c_lo, c_hi, i_lo, i_hi in breakpoints:
-        if c_lo <= conc <= c_hi:
+    n = len(breakpoints)
+    for k, (c_lo, c_hi, i_lo, i_hi) in enumerate(breakpoints):
+        # extend the band's upper edge up to the next band's lower bound so gap
+        # values (c_hi < conc < next_c_lo) fall into THIS band, not the cap.
+        upper = breakpoints[k + 1][0] if k + 1 < n else c_hi
+        if c_lo <= conc < upper or (k == n - 1 and conc <= c_hi):
             return (i_hi - i_lo) / (c_hi - c_lo) * (conc - c_lo) + i_lo
     # above the highest breakpoint -> cap at the top sub-index
     top = breakpoints[-1]
@@ -109,8 +119,15 @@ class AQIEngine:
         """Vectorised sub-index over an array of concentrations."""
         conc = np.asarray(conc, dtype="float64")
         out = np.full(conc.shape, np.nan)
-        for c_lo, c_hi, i_lo, i_hi in breakpoints:
-            m = (conc >= c_lo) & (conc <= c_hi)
+        n = len(breakpoints)
+        for k, (c_lo, c_hi, i_lo, i_hi) in enumerate(breakpoints):
+            # match the scalar path: extend each band up to the next band's lower
+            # bound so gap values (c_hi < conc < next_c_lo) map into THIS band.
+            upper = breakpoints[k + 1][0] if k + 1 < n else c_hi
+            if k == n - 1:
+                m = (conc >= c_lo) & (conc <= c_hi)
+            else:
+                m = (conc >= c_lo) & (conc < upper)
             out[m] = (i_hi - i_lo) / (c_hi - c_lo) * (conc[m] - c_lo) + i_lo
         top = breakpoints[-1]
         out[conc > top[1]] = float(top[3])   # cap above highest breakpoint

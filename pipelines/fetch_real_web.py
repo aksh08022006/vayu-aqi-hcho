@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Fetch REAL satellite layers directly from GEE -> web/public/data/*.json.
+"""Fetch REAL satellite layers directly from GEE -> public/data/*.json.
 
 No Google Drive round-trip and no CPCB needed: pulls the post-monsoon 2021
 seasonal-mean TROPOMI gas columns + MAIAC AOD + MODIS fire over India straight
@@ -36,7 +36,8 @@ from matplotlib.path import Path as MplPath
 sys.path.insert(0, "src")
 from isro_aqi.hcho import phv, source_attribution, transport  # noqa: E402
 
-OUT = Path("web/public/data")
+OUT = Path("public/data")
+OUT.mkdir(parents=True, exist_ok=True)
 REGION_BBOX = [68.0, 6.5, 97.5, 37.5]
 START, END = "2021-10-01", "2021-12-31"
 SCALE = 55660  # ~0.5 deg — matches the map's 0.5° cell size (HALF=0.25) + the AQI grid
@@ -146,7 +147,7 @@ def main():
     clusters = source_attribution.connected_clusters(ds_phv["hva"], hcho_da)
     if len(clusters):
         regions = yaml.safe_load(open("config/regions.yaml"))
-        clusters["frp_mean"] = [float(layers["frp"].sel(lon=r.lon, lat=r.lat, method="nearest") or 0)
+        clusters["frp_mean"] = [float(np.nan_to_num(layers["frp"].sel(lon=r.lon, lat=r.lat, method="nearest").values, nan=0.0))
                                 for r in clusters.itertuples()]
         clusters = source_attribution.attribute(clusters, regions, season="post_monsoon")
         hs = [{"lon": round(float(r.lon), 2), "lat": round(float(r.lat), 2),

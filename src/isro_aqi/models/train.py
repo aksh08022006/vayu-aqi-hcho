@@ -139,11 +139,26 @@ def _evaluate_loss(model, dl, dev) -> float:
 
 @torch.no_grad()
 def evaluate_metrics(model, dl, targets: list[str], dev) -> dict:
-    """Per-target R2/RMSE/MAE on a loader."""
+    """Per-target R2/RMSE/MAE on a loader, in the targets' NATIVE units.
+
+    If the loader's dataset z-scored its targets (``target_mean``/``target_std``
+    set, e.g. via PatchSequenceDataset), predictions AND truths are de-
+    standardised back to physical units before metrics, so RMSE/MAE are reported
+    in the pollutant's own units (ug/m^3, mg/m^3) -- matching how run_demo's
+    ``_eval_cnn_lstm`` evaluates. R2 is scale-invariant either way.
+    """
     model.eval()
     preds, trues = [], []
     for x, y in dl:
         preds.append(model(x.to(dev)).cpu().numpy())
         trues.append(y.numpy())
     P, Y = np.vstack(preds), np.vstack(trues)
+
+    ds = getattr(dl, "dataset", None)
+    tmean = getattr(ds, "target_mean", None)
+    tstd = getattr(ds, "target_std", None)
+    if tmean is not None and tstd is not None:
+        # de-standardise both predictions and truths into native units
+        P = P * tstd + tmean
+        Y = Y * tstd + tmean
     return {t: point_metrics(Y[:, i], P[:, i]) for i, t in enumerate(targets)}

@@ -74,6 +74,20 @@ def test_vectorised_grid_matches_scalar():
             assert dom[i, j] == d
 
 
+def test_sub_index_gap_value_scalar_and_grid_agree():
+    import numpy as np
+
+    # PM2.5 = 30.5 lands in the integer GAP between band [0,30,0,50] and
+    # [31,60,51,100]. It must NOT return the top-band cap (500) nor NaN; it
+    # should fall into the [0,30] band (extended up to the next lower bound 31),
+    # giving a sub-index just above 50. Scalar and vector paths must agree.
+    si = sub_index(30.5, BP["breakpoints"]["pm25"])
+    assert si is not None
+    assert 50.0 <= si < 51.0  # interpolated within the [0,30,0,50] band, conc>30
+    vec = ENGINE._sub_index_vec(np.array([30.5]), BP["breakpoints"]["pm25"])
+    assert vec[0] == pytest.approx(si, abs=1e-9)
+
+
 def test_grid_invalidates_cells_without_mandatory():
     import numpy as np
 

@@ -21,6 +21,7 @@ export function ChapterNav() {
             <Link
               key={c.href}
               href={c.href}
+              aria-current={active ? "page" : undefined}
               className="data whitespace-nowrap rounded-full px-3 py-1.5 text-[12px] transition-colors"
               style={{
                 color: active ? "#07090c" : "var(--color-text-2)",

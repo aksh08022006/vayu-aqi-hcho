@@ -3,7 +3,7 @@
 
 Pulls the real predictor stack straight from GEE (no Drive download needed),
 collocates it with your CPCB station data, trains + spatially-cross-validates the
-hybrid model, and writes a REAL, ground-validated AQI map -> web/public/data.
+hybrid model, and writes a REAL, ground-validated AQI map -> public/data.
 
     python pipelines/run_real.py          # or:  make real
 
@@ -52,7 +52,7 @@ from isro_aqi.preprocessing.gapfill_aod import fill_aod_stack  # noqa: E402
 # AND TROPOMI satellite data (OpenAQ India archive skips 2019-2024; TROPOMI starts 2018).
 START, END = "2025-10-01", "2025-12-31"
 SCALE = 27830  # ~0.25 deg predictor grid
-WEB = Path("web/public/data")
+WEB = Path("public/data")
 TARGETS = ["pm25", "pm10", "no2_obs", "so2_obs", "o3_obs", "co_obs"]
 AQI_MAP = {"pm25": "pm25", "pm10": "pm10", "no2": "no2_obs", "so2": "so2_obs", "o3": "o3_obs", "co": "co_obs"}
 # band order produced by each ingestion module's ee.Image
@@ -438,7 +438,7 @@ def main():
     cells = [[round(float(lon[i]), 2), round(float(lat[i]), 2), int(out["cpcb"][i]), int(out["rapi"][i])]
              for i in range(len(lon)) if inside[i] and np.isfinite(out["cpcb"][i])]
     (WEB / "aqi_frames.json").write_text(json.dumps({"key": ["lon", "lat", "aqi", "rapi"], "frames": [{"date": START, "cells": cells}]}, separators=(",", ":")))
-    print(f"-> web/public/data/aqi_frames.json: REAL validated AQI ({len(cells)} cells)")
+    print(f"-> public/data/aqi_frames.json: REAL validated AQI ({len(cells)} cells)")
     print("\nObjective 1 COMPLETE: real surface AQI trained + validated against CPCB. AQI layer is now real.")
 
 

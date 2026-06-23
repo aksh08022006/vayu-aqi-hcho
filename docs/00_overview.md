@@ -28,8 +28,8 @@ deliverables:
 ### Headline novelty
 
 > Satellite-derived AQI mapping **+** HCHO hotspot detection **+** biomass-burning
-> attribution **+** atmospheric transport analysis **+** explainable deep learning —
-> a combination none of the four reference papers attempt together.
+> attribution **+** atmospheric transport analysis **+** a dual AQI index (CPCB max +
+> entropy RAPI) — a combination none of the four reference papers attempt together.
 
 ---
 
@@ -47,9 +47,9 @@ The blueprint is anchored in four papers (full citations in
   alternative to max-of-sub-index.
 
 Each phase doc states explicitly what it reuses from these papers and where it
-**extends beyond** them (e.g. Getis-Ord Gi* and DBSCAN are our additions to the
-PHV method; transport analysis is the differentiator that [B] only discusses
-qualitatively).
+**extends beyond** them (e.g. Getis-Ord Gi* and connected-component clustering are
+our additions to the PHV method; transport analysis is the differentiator that [B]
+only discusses qualitatively).
 
 ---
 
@@ -59,17 +59,17 @@ qualitatively).
  CPCB stations ─┐  (ground truth / targets)
  INSAT-3D AOD ──┤
  TROPOMI gases ─┤
- ERA5 + BLH ────┼─▶ preprocessing ─▶ feature eng. ─▶ CNN-LSTM ─▶ surface pollutants ─▶ AQI engine ─▶ Daily AQI maps
- Land cover ────┤        (Phase 4)      (Phase 5)    (Phase 6-7)     (Phase 6)         (Phase 8)      (Phase 9)
- Elevation ─────┤
+ ERA5 + BLH ────┼─▶ preprocessing ─▶ feature eng. ─▶ RF (+kriging) ─▶ surface pollutants ─▶ AQI engine ─▶ Daily AQI maps
+ Land cover ────┤        (Phase 4)      (Phase 5)    (Phase 6-7)       (Phase 6)         (Phase 8)      (Phase 9)
+ Elevation ─────┤                                    [CNN-LSTM validated, off map path]
  Fire / EVI ────┘
 
  TROPOMI HCHO ──┐
  VIIRS fires ───┤
  ERA5 winds ────┼─▶ hotspot detection ─▶ source attribution ─▶ transport ─▶ HCHO Atlas
- Land cover ────┘   PHV/Gi*/DBSCAN/P95      (Phase 10)       (Phase 12-13)
+ Land cover ────┘   PHV / Gi* + clusters   (Phase 10)       (Phase 13)
                        (Phase 10)
-                                         explainability (SHAP, Phase 14) ─▶ dashboard (Streamlit)
+                                                            ─▶ dashboard (Streamlit)
 ```
 
 ---
@@ -83,15 +83,15 @@ qualitatively).
 | 3 | [03_database_design](03_database_design.md) | Unified ~50–100 M-row table |
 | 4 | [04_preprocessing](04_preprocessing.md) | Co-registered, QA-screened, collocated stack |
 | 5 | [05_feature_engineering](05_feature_engineering.md) | FNR, lags, interactions, cyclical time |
-| 6 | [06_models](06_models.md) | RF / XGBoost / CNN / LSTM / **CNN-LSTM** |
+| 6 | [06_models](06_models.md) | RF / XGBoost / CNN / **CNN-LSTM** + regression-kriging hybrid (RF is operational) |
 | 7 | [07_training_validation](07_training_validation.md) | random/spatial/temporal CV framework |
 | 8 | [08_aqi_engine](08_aqi_engine.md) | CPCB sub-index + AQI engine (tested) |
 | 9 | [09_aqi_mapping](09_aqi_mapping.md) | Daily→annual **India AQI Atlas** |
-| 10 | [10_hcho_hotspots](10_hcho_hotspots.md) | PHV / Gi* / DBSCAN / P95 hotspots |
+| 10 | [10_hcho_hotspots](10_hcho_hotspots.md) | PHV / Gi* + connected-component clusters |
 | 11 | [11_biomass_burning](11_biomass_burning.md) | Fire density maps, burning belts |
-| 12 | [12_hcho_ozone](12_hcho_ozone.md) | HCHO–O₃ correlation, lag, FNR regimes |
+| 12 | [12_hcho_ozone](12_hcho_ozone.md) | ⚠️ deprecated (ozone_relationship removed); FNR kept as feature |
 | 13 | [13_transport_analysis](13_transport_analysis.md) | Back-trajectories, source→receptor |
-| 14 | [14_explainability](14_explainability.md) | SHAP drivers of PM2.5/O₃ |
+| 14 | [14_explainability](14_explainability.md) | ⚠️ deprecated (SHAP not implemented) |
 | — | [15_dashboard](15_dashboard.md) | Streamlit explorer |
 | — | [references](references.md) | Bibliography + dataset citations |
 
@@ -109,9 +109,9 @@ qualitatively).
 
 See the top-level [`README.md`](../README.md) for the directory tree and quick-start.
 Deterministic, mathematically-closed components (**AQI engine, PHV, Getis-Ord Gi*,
-DBSCAN**) are fully implemented and unit-tested (`tests/`); data-dependent stages
-(ingestion, preprocessing, training) are implemented as runnable modules wired by
-the `pipelines/` CLIs.
+regression-kriging hybrid**) are fully implemented and unit-tested (`tests/` — 37
+tests across 9 files); data-dependent stages (ingestion, preprocessing, training)
+are implemented as runnable modules wired by the `pipelines/` CLIs.
 
 ## 7. Suggested milestones
 
@@ -120,7 +120,7 @@ the `pipelines/` CLIs.
 3. **M3 — Modelling:** CNN-LSTM + baselines, 3-scheme validation (Phases 4–7).
 4. **M4 — AQI atlas:** daily→annual maps (Phases 8–9).
 5. **M5 — HCHO science:** hotspots → attribution → ozone → transport (Phases 10–13).
-6. **M6 — Explainability + dashboard + paper** (Phases 14–15).
+6. **M6 — Dashboard + web + paper** (Phase 15).
 
 > Publication target: an ISRO student project + a journal/conference paper on
 > *satellite-derived AQI with HCHO hotspot attribution and transport over India*.

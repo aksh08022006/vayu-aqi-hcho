@@ -15,10 +15,19 @@ import xarray as xr
 from torch.utils.data import Dataset
 
 from isro_aqi.utils.geo import Grid
+from isro_aqi.utils.logging import get_logger
+
+log = get_logger("dataset")
 
 
 class Standardizer:
-    """Per-channel z-score using training-set statistics."""
+    """Per-channel z-score using training-set statistics.
+
+    Stats are exposed as ``.mean`` / ``.std`` arrays; standardisation is applied
+    in ``PatchSequenceDataset._patch_seq`` with the channel axis broadcast, so
+    there is no channel-last ``__call__`` (it was dead and assumed the wrong
+    axis order for the (T, C, P, P) patches).
+    """
 
     def __init__(self, mean: np.ndarray, std: np.ndarray):
         self.mean = mean.astype("float32")
@@ -29,9 +38,6 @@ class Standardizer:
         mean = np.array([float(stack[c].mean(skipna=True)) for c in channels])
         std = np.array([float(stack[c].std(skipna=True)) for c in channels])
         return cls(mean, std)
-
-    def __call__(self, arr: np.ndarray) -> np.ndarray:  # arr: (..., C) channel-last
-        return (arr - self.mean) / self.std
 
 
 class PatchSequenceDataset(Dataset):
@@ -62,7 +68,18 @@ class PatchSequenceDataset(Dataset):
         target_std: np.ndarray | None = None,
     ):
         self.stack = stack
-        self.samples = samples.reset_index(drop=True)
+        samples = samples.reset_index(drop=True)
+        # Drop samples that fall OUTSIDE the analysis grid. Previously these were
+        # silently snapped to the (0, 0) corner cell, training/evaluating on the
+        # wrong location. We log how many were dropped instead.
+        in_grid = samples.apply(
+            lambda r: grid.cell_index(float(r["lon"]), float(r["lat"])) is not None,
+            axis=1,
+        )
+        n_drop = int((~in_grid).sum())
+        if n_drop:
+            log.warning(f"dropping {n_drop}/{len(samples)} off-grid samples (outside AOI)")
+        self.samples = samples[in_grid].reset_index(drop=True)
         self.channels = channels
         self.targets = targets
         self.grid = grid
@@ -95,16 +112,19 @@ class PatchSequenceDataset(Dataset):
             seq, ((0, 0), (0, 0), (half, half), (half, half)), mode="reflect"
         )
         patch = padded[:, :, row : row + self.P, col : col + self.P]  # (T, C, P, P)
-        patch = np.nan_to_num(patch, nan=0.0)
-        # standardize per channel (channel axis = 1)
+        # Standardize BEFORE filling NaNs so that a missing value becomes 0 in
+        # STANDARDIZED space (i.e. the channel mean), not raw 0 (which after
+        # standardisation would be a large spurious negative for offset channels).
         patch = (patch - self.std.mean[None, :, None, None]) / self.std.std[None, :, None, None]
+        patch = np.nan_to_num(patch, nan=0.0)
         return patch.astype("float32")
 
     def __getitem__(self, i: int):
         r = self.samples.iloc[i]
         idx = self.grid.cell_index(float(r["lon"]), float(r["lat"]))
         t_idx = int(np.argmin(np.abs(self._times - pd.to_datetime(r["date"]))))
-        row, col = idx if idx else (0, 0)
+        # off-grid samples were dropped in __init__, so idx is always valid here.
+        row, col = idx
         x = torch.from_numpy(self._patch_seq(t_idx, row, col))
         y_raw = np.array([r.get(t, np.nan) for t in self.targets], dtype="float32")
         if self.target_mean is not None:

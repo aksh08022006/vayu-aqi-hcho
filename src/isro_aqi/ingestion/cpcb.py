@@ -45,6 +45,12 @@ def to_daily(hourly: pd.DataFrame, station_col="station_id", time_col="datetime"
     24-h mean for PM2.5/PM10/NO2/SO2; 8-h rolling max for O3 and CO (per CPCB AQI
     averaging rules in config/aqi_breakpoints.yaml). Requires at least 16 valid
     hours/day (CPCB completeness rule) else the day is dropped as NaN.
+
+    Cadence-aware: some sources (e.g. OpenAQ) already deliver DAILY rows, not
+    hourly. For a station-day with only a few records the 16-distinct-hour gate
+    and the 8h ``min_periods=6`` rolling window would silently drop everything.
+    When a station-day has <= ``DAILY_MAX_ROWS`` rows we treat it as already
+    daily and pass the values through (simple aggregation, no completeness gate).
     """
     hourly = hourly.copy()
     hourly[time_col] = pd.to_datetime(hourly[time_col])
@@ -53,17 +59,26 @@ def to_daily(hourly: pd.DataFrame, station_col="station_id", time_col="datetime"
     mean_cols = [c for c in ("pm25", "pm10", "no2", "so2") if c in hourly]
     max8_cols = [c for c in ("o3", "co") if c in hourly]
 
+    # A station-day with at most this many rows is treated as already-daily.
+    DAILY_MAX_ROWS = 3
+
     out = []
     for (sid, date), g in hourly.groupby([station_col, "date"]):
-        if g[time_col].dt.hour.nunique() < 16:
+        already_daily = len(g) <= DAILY_MAX_ROWS
+        if not already_daily and g[time_col].dt.hour.nunique() < 16:
             continue
         rec = {"station_id": sid, "date": date}
         for c in mean_cols:
             rec[c] = g[c].mean()
         for c in max8_cols:
-            # 8-hour rolling mean, then take the daily max of those windows
-            roll = g.set_index(time_col)[c].sort_index().rolling("8h", min_periods=6).mean()
-            rec[c] = roll.max()
+            if already_daily:
+                # already a daily value -> take the day's max directly; the 8h
+                # rolling window cannot apply to a single sub-daily observation.
+                rec[c] = g[c].max()
+            else:
+                # 8-hour rolling mean, then take the daily max of those windows
+                roll = g.set_index(time_col)[c].sort_index().rolling("8h", min_periods=6).mean()
+                rec[c] = roll.max()
         out.append(rec)
     daily = pd.DataFrame(out)
     log.info(f"CPCB daily records: {len(daily)} from {hourly[station_col].nunique()} stations")

@@ -90,8 +90,9 @@ npm run dev            # http://localhost:3000  (reads public/data/*.json)
 ### Run the research pipeline (Python)
 
 ```bash
-# 0. Install
-pip install -e .                 # or: conda env create -f environment.yml && conda activate isro-aqi
+# 0. Install (the editable package + its runtime deps)
+pip install -e . && pip install -r requirements.txt
+#   or:  conda env create -f environment.yml && conda activate isro-aqi && pip install -e .
 
 # 1. TRY IT NOW — full pipeline end-to-end on synthetic India data, NO credentials:
 make demo                        # -> outputs/ : AQI maps, HCHO hotspots, figures, demo_summary.md

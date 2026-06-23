@@ -1,3 +1,6 @@
+> ⚠️ **DEPRECATED IN REDESIGN — this module was removed; kept as design rationale only.**
+> SHAP explainability (`explain/shap_analysis.py`) is **not implemented** in the current codebase.
+
 # Phase 14 — Explainable AI (SHAP)
 
 Model-agnostic driver attribution for the surface-AQI / HCHO predictors: *what actually drives PM2.5 and O₃ — AOD, temperature, BLH, wind, or fire?*

@@ -37,7 +37,7 @@ It ships as three parts:
 
 - **Python library** (`src/isro_aqi/`) — does the science.
 - **Pipeline scripts** (`pipelines/`) — orchestrate runs end-to-end.
-- **Next.js scrollytelling site** (`web/`) — visualizes the results.
+- **Next.js scrollytelling site** (`app/`, `components/`, `lib/`, `public/` — at repo root) — visualizes the results.
 
 There are **two data realities** living side by side: a **synthetic demo path** (runs with zero
 credentials) and a **real satellite path** (validated against CPCB/OpenAQ ground stations).
@@ -226,7 +226,7 @@ is a stub) → `05/06/07_*` (**scaffold stubs** — real impl is in the entry-po
      literature-comparable interpolation) **and** **spatial 2°-block 5-fold** (held-out *regions* —
      hard extrapolation to unmonitored sites). The gap between them is the honesty signal.
    - Refit RF per target → predict seasonal grid → `compute_grid` → ocean-mask via `india.geojson`
-     → write **1 real validated frame** to `web/public/data/aqi_frames.json`. Validation →
+     → write **1 real validated frame** to `public/data/aqi_frames.json`. Validation →
      `outputs/real_validation.json`.
 
 3. **`fetch_real_web.py`** (`make fetch-web`) — replaces the **observation** layers with real 2021
@@ -258,7 +258,7 @@ CV measures *extrapolation* to unmonitored regions — the honest, harder number
 
 ---
 
-## 9. Frontend (`web/` — Next.js 16 + React 19)
+## 9. Frontend (root `app/` — Next.js 16 + React 19)
 
 A **multi-page scrollytelling site** ("VAYU"), not one long page. Stack: **deck.gl 9 + MapLibre**
 (no Mapbox token), **Anime.js v4** (not GSAP), **Lenis** smooth scroll, **Tailwind v4**.
@@ -292,13 +292,13 @@ config/*.yaml
   → AQIEngine.compute_grid (CPCB + RAPI)          [aqi/engine.py]
   → HCHO: PHV / Gi* → attribute → transport       [src/isro_aqi/hcho]
   → export JSON          [pipelines/export_web | fetch_real_web | run_real]
-  → web/public/data/*.json
-  → DeckMap (BitmapLayer fields) + sections        [web/]
+  → public/data/*.json
+  → DeckMap (BitmapLayer fields) + sections        [app/, components/]
 ```
 
 ---
 
-## 11. The data contract (`web/public/data/`)
+## 11. The data contract (`public/data/`)
 
 The seven files are the bridge between backend and frontend:
 
@@ -314,22 +314,27 @@ The seven files are the bridge between backend and frontend:
 
 ---
 
-## 12. Honest caveats (worth fixing)
+## 12. Known limitations & design choices
 
-- **The CNN-LSTM is showcased but not deployed** — RF (bare or as hybrid trend) generates every
-  map. `04_train.py`'s deep branch and `05/06/07_*.py` are stubs.
-- **Two accuracy stories coexist on the site**: `model/page.tsx` shows the *real* R²≈0.53–0.71,
-  while the older `Results` component in `sections.tsx` still shows synthetic R²≈0.86/0.93.
-- **The AQI timelapse is over-built**: the UI expects 8 frames (`NFRAMES=8`), but `run_real.py`
-  writes only 1 real seasonal frame, so the scrubber is currently cosmetic against real data.
-- **Mixed time windows on the live site**: AQI layer is real 2025 (`run_real.py`); observation
-  layers are real 2021 (`fetch_real_web.py`).
-- **`hotspots.json` contains literal `NaN`** (invalid JSON) → that fetch can throw and degrade the
-  hotspots layer.
-- **`ChapterRail.tsx` is dead code** (a leftover single-page scroll-spy); live nav is
-  `ChapterNav.tsx`.
-- **INSAT-3D AOD ingestion is a `NotImplementedError` stub** — MAIAC (`MCD19A2`) is the working
-  substitute despite the "INSAT-3D" branding.
+Most of the original honest caveats were fixed in the June 2026 audit/cleanup. What remains is by
+design or external:
+
+- **CNN-LSTM is implemented & validated but not on the map path** — the operational predictor is a
+  Random Forest (bare, or as the hybrid trend). The UI and docs now label the CNN-LSTM as a
+  research/validated model, not the deployed one. The numbered `pipelines/05–07_*.py` and
+  `04_train.py`'s deep branch are explicitly-labeled **scaffolds**; the real work runs in
+  `run_demo.py` / `run_real.py` / `fetch_real_web.py`.
+- **Mixed time windows on the live site** — the AQI layer is real Oct–Dec **2025** (`run_real.py`),
+  while the observation layers are real Oct–Dec **2021** (`fetch_real_web.py`). Both are real; they
+  just come from different seasons.
+- **INSAT-3D AOD ingestion is a labeled `NotImplementedError` stub** — MAIAC (`MCD19A2`) is the
+  working substitute the real-data path actually uses, despite the "INSAT-3D" branding.
+
+**Resolved in the cleanup:** the two-accuracy-story contradiction (the site now shows the real
+validation numbers everywhere), the over-built 8-frame timelapse (frame count now derived from the
+data; a single frame shows no fake scrubber), the invalid-JSON `hotspots.json` (`NaN`→`null`, fixed
+at the generators too), dead `ChapterRail.tsx` (removed), the `web/public/data` → `public/data`
+export-path break, the AQI sub-index inter-band gap bug, and the `getis_ord` config-key mismatch.
 
 ---
 
@@ -348,7 +353,7 @@ The seven files are the bridge between backend and frontend:
 | Synthetic data | `src/isro_aqi/synthetic.py` |
 | Visualization | `src/isro_aqi/viz/{maps,figures}.py` |
 | Run end-to-end | `pipelines/{run_demo,run_real,fetch_real_web,export_web}.py`, `Makefile` |
-| Frontend | `web/app/`, `web/components/`, `web/lib/`, `web/public/data/` |
+| Frontend | `app/`, `components/`, `lib/`, `public/data/` |
 
 ---
 

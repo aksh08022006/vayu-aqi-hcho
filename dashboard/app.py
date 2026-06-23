@@ -10,7 +10,7 @@ transport trajectories.
 Tabs:
     AQI        daily AQI map + dominant-pollutant + category legend
     Pollutants per-pollutant surface concentration maps
-    HCHO       HCHO column + PHV/Gi*/DBSCAN hotspots (method selector)
+    HCHO       HCHO column + PHV/Gi* hotspots (method selector)
     Fire       VIIRS/MODIS fire density + FRP
     Hotspots   attributed hotspot table (urban/industrial/agri/forest) + map
     Transport  back-trajectory overlay for a chosen receptor/date
@@ -51,7 +51,7 @@ def main():
         if layer == "Pollutants":
             st.selectbox("Pollutant", ["PM2.5", "PM10", "NO2", "SO2", "CO", "O3"])
         if layer == "HCHO":
-            st.selectbox("Hotspot method", ["PHV", "Getis-Ord Gi*", "DBSCAN", "P95"])
+            st.selectbox("Hotspot method", ["PHV", "Getis-Ord Gi*"])
         if layer == "Transport":
             receptors = list((cfg.regions.get("receptors", {}) if cfg else {}).keys()) or ["delhi"]
             st.selectbox("Receptor", receptors)

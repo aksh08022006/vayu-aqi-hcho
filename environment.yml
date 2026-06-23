@@ -43,13 +43,12 @@ dependencies:
   - pytest>=8.0
   - ruff>=0.3
   - pip
-  # everything that is cleaner via pip (GEE, shap, cdsapi, etc.)
+  # everything that is cleaner via pip (GEE, cdsapi, etc.)
   - pip:
       - earthengine-api>=0.1.390
       - geemap>=0.32
       - eemont>=0.3
       - cdsapi>=0.7
-      - shap>=0.44
       - windrose>=1.9
       - streamlit-folium>=0.18
       - loguru>=0.7

@@ -78,6 +78,16 @@ def attribute(
     hotspots must have at least lon/lat; fire_col/evi_col are used if present
     (join them from the collocated database first). `season` (IMD season name)
     gates the burning classes so a summer fire isn't attributed to winter paddy.
+
+    PRECEDENCE (lowest -> highest; the LAST matching rule wins for a hotspot):
+      1. urban         -- within a city radius
+      2. industrial    -- within an industrial bbox
+      3. agri_burning  -- crop bbox + fire (in season)
+      4. forest_fire   -- forest bbox + fire (in season)
+    So a fire-coincident crop/forest match overrides an urban/industrial label,
+    and forest overrides crop where bboxes overlap. ``biogenic`` is assigned only
+    when nothing above matched (src still ``other``), there is high EVI and no
+    fire. Region specs without a ``bbox`` are skipped (guarded by ``.get``).
     """
     urban = regions.get("urban", {})
     industrial = regions.get("industrial", {})
@@ -91,24 +101,32 @@ def attribute(
         evi = float(r.get(evi_col, 0) or 0)
         src, detail = "other", None
 
+        # 1) urban (lowest precedence)
         city = _near_city(lon, lat, urban)
         if city:
             src, detail = "urban", city
 
+        # 2) industrial (overrides urban)
         for name, spec in industrial.items():
-            if "bbox" in spec and _in_bbox(lon, lat, spec["bbox"]):
+            bbox = spec.get("bbox")
+            if bbox is not None and _in_bbox(lon, lat, bbox):
                 src, detail = "industrial", name
 
+        # 3) agri_burning, then 4) forest_fire (both require coincident fire and
+        #    override urban/industrial; forest is evaluated last so it wins ties)
         if fire >= fire_threshold:
             for name, spec in crop.items():
+                bbox = spec.get("bbox")
                 in_season = season is None or season in spec.get("seasons", [])
-                if _in_bbox(lon, lat, spec["bbox"]) and in_season:
+                if bbox is not None and _in_bbox(lon, lat, bbox) and in_season:
                     src, detail = "agri_burning", name
             for name, spec in forest.items():
+                bbox = spec.get("bbox")
                 in_season = season is None or season in spec.get("seasons", [])
-                if _in_bbox(lon, lat, spec["bbox"]) and in_season:
+                if bbox is not None and _in_bbox(lon, lat, bbox) and in_season:
                     src, detail = "forest_fire", name
 
+        # biogenic only if nothing above matched
         if src == "other" and evi >= evi_threshold and fire < fire_threshold:
             src = "biogenic"
 

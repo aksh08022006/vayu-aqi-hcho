@@ -4,8 +4,10 @@ Implements Wang/Shanghai's regression-kriging structure:
 
     C(s, t) = mu(s, t) + v(s, t)
 
-  mu : the TREND -- any learner (RandomForest here for fast full-grid maps; the
-       ISRO-specified CNN-LSTM plugs in via the same fit/predict interface).
+  mu : the TREND -- a learner with a sklearn-style fit/predict. RandomForest is
+       used here for fast full-grid maps. (The CNN-LSTM in models/ uses a torch
+       training loop, NOT this same fit/predict object, so it is trained/applied
+       separately -- it does not drop into HybridModel as the trend.)
   v  : the RESIDUAL field -- station residuals (obs - trend) interpolated over
        space. Near a station v corrects the local bias; far from any station the
        weights vanish so v -> 0 and the prediction falls back to the pure trend
@@ -15,7 +17,8 @@ Implements Wang/Shanghai's regression-kriging structure:
 The residual interpolator is a Gaussian-kernel simple-kriging (zero far-field
 mean): w_i = exp(-d_i^2 / 2L^2); v = sum(w_i r_i) / (sum(w_i) + reg). With the
 +reg damping, sparse/far regions decay to 0 rather than extrapolating wildly.
-Set method='gp' for exact Gaussian-process kriging (sklearn) where available.
+(There is no 'gp' / exact Gaussian-process option here -- only this kernel
+weighting, tuned via ``length_scale_deg`` and ``reg``.)
 """
 
 from __future__ import annotations

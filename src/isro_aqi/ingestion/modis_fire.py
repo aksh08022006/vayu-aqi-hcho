@@ -25,24 +25,35 @@ log = get_logger("modis_fire")
 
 
 def active_fire_frp(cfg: Config, start: str, end: str) -> "ee.Image":
-    """Mean and max fire radiative power over the period (MW). FRP is MaxFRP/10."""
+    """Mean and max fire radiative power over the period (MW). FRP is MaxFRP/10.
+
+    `fire_count` is the number of days a pixel had a confident fire detection
+    (MOD14A1 FireMask class >= 7: 7=low, 8=nominal, 9=high confidence fire), NOT
+    the collection size -- ``coll.count()`` would return the same value for every
+    pixel (the number of images), which is meaningless as a per-pixel fire metric.
+    FRP bands are unmasked to 0 BEFORE mean/max so non-fire days count as 0 MW
+    rather than being skipped by the masked reducer (which would bias means high).
+    """
     import ee
 
     spec = cfg.datasets["modis_fire"]["active_fire"]
     region = aoi_geometry(cfg)
     coll = (
         ee.ImageCollection(spec["asset"])
-        .select("MaxFRP")
         .filterDate(start, end)
         .filterBounds(region)
     )
-    frp = coll.map(lambda i: i.divide(10.0))  # scale to MW
-    # .toFloat(): count() is UInt32 while the FRP bands are Float32, and GEE's
-    # image export requires all bands to share a data type -- cast to one.
+    # per-pixel count of confident-fire days (FireMask >= 7)
+    fire_days = coll.map(lambda i: i.select("FireMask").gte(7))
+    fire_count = fire_days.sum().rename("fire_count")
+    # FRP in MW (MaxFRP/10); unmask non-fire pixels to 0 before reducing.
+    frp = coll.map(lambda i: i.select("MaxFRP").divide(10.0).unmask(0))
+    # .toFloat(): fire_count is integer-typed while the FRP bands are Float32, and
+    # GEE's image export requires all bands to share a data type -- cast to one.
     return ee.Image.cat(
         frp.mean().rename("frp_mean"),
         frp.max().rename("frp_max"),
-        coll.count().rename("fire_count"),
+        fire_count,
     ).toFloat()
 
 

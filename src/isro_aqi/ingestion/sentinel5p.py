@@ -2,7 +2,9 @@
 
 Pulls tropospheric column densities for NO2, SO2, CO, O3 and HCHO. HCHO is both a
 model predictor (Objective 1) and the primary target of the hotspot analysis
-(Objective 2), so it gets a qa_value>0.75 cloud screen (Phase 7).
+(Objective 2). HCHO is screened by a cloud_fraction mask (cloud_fraction <
+cfg.hcho.cloud_fraction_max, default 0.4) plus the config qa_threshold (default
+0.5, the HCHO community standard -- NOT 0.75) at ingestion (Phase 7).
 
 Reference: Kuttippurath et al. 2022 use TROPOMI HCHO over India; Dong et al. 2026
 use it for PHV hotspot detection on a ~1 km grid.
@@ -12,7 +14,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from isro_aqi.config import Config
+from isro_aqi.config import Config, load_config
 from isro_aqi.ingestion.gee_auth import aoi_geometry, daily_collection, export_image, init_ee
 from isro_aqi.utils.logging import get_logger
 
@@ -69,5 +71,7 @@ def export_period(cfg: Config, start: str, end: str, gases=GASES) -> list:
 
 
 if __name__ == "__main__":  # pragma: no cover - manual smoke test
-    cfg = Config.model_validate({})  # replace with load_config in real runs
+    # Config has required fields; Config.model_validate({}) would raise. Load the
+    # real config instead so the smoke test reflects a real run.
+    cfg = load_config()
     log.info("Run via pipelines/01_ingest.py; this module exposes build_stack/export_period.")

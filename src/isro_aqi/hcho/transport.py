@@ -20,11 +20,13 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
+from isro_aqi.utils.geo import EARTH_RADIUS_KM
 from isro_aqi.utils.logging import get_logger
 
 log = get_logger("transport")
 
-EARTH_R_KM = 6371.0088
+# Single source of truth for the Earth radius (was re-declared here).
+EARTH_R_KM = EARTH_RADIUS_KM
 
 
 def wind_rose(u: pd.Series, v: pd.Series, out_path: str | None = None):
@@ -60,6 +62,14 @@ def back_trajectory(
     a fire map to attribute receptor HCHO to upwind burning.
     """
     times = pd.to_datetime(winds["time"].values)
+    # AOI bounds of the wind field. Without clamping, once a parcel leaves the
+    # grid ``.sel(method="nearest")`` keeps returning the EDGE cell's wind,
+    # fabricating a plausible-looking but unsupported off-grid trajectory. We clip
+    # each step back into [lon_min,lon_max] x [lat_min,lat_max] and stop stepping
+    # once the parcel has left the AOI (its origin is then outside our data).
+    lon_min, lon_max = float(winds["lon"].min()), float(winds["lon"].max())
+    lat_min, lat_max = float(winds["lat"].min()), float(winds["lat"].max())
+
     lon, lat = start_lon, start_lat
     t = pd.to_datetime(start_time)
     path = [{"time": t, "lon": lon, "lat": lat}]
@@ -77,7 +87,16 @@ def back_trajectory(
         lat += dlat
         lon += dlon
         t -= pd.Timedelta(hours=dt_hours)
+        # clamp to the AOI so the next .sel(nearest) cannot fabricate off-grid wind
+        clamped_lon = min(max(lon, lon_min), lon_max)
+        clamped_lat = min(max(lat, lat_min), lat_max)
+        left_aoi = clamped_lon != lon or clamped_lat != lat
+        lon, lat = clamped_lon, clamped_lat
         path.append({"time": t, "lon": lon, "lat": lat})
+        if left_aoi:
+            # parcel reached the AOI edge -> upstream source is outside our winds
+            log.info("back_trajectory: parcel reached AOI boundary; stopping early")
+            break
     return pd.DataFrame(path)
 
 
@@ -101,6 +120,10 @@ def fires_along_path(path: pd.DataFrame, fires: pd.DataFrame, radius_km: float =
 
 def run_hysplit(*args, **kwargs):
     """Production trajectories via NOAA HYSPLIT (external engine).
+
+    NOT IMPLEMENTED -- requires an external native engine (NOAA HYSPLIT) and
+    staged ARL met files that cannot run in this environment; the lightweight
+    ``back_trajectory`` above is the in-repo substitute.
 
     Recommended wiring: install HYSPLIT + `pysplit`, stage GDAS/ERA5 ARL met
     files, then generate ensembles of backward trajectories per receptor/day and

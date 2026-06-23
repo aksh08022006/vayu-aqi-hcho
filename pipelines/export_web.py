@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Export the REAL (redesigned) model's outputs to web/public/data/*.json.
+"""Export the REAL (redesigned) model's outputs to public/data/*.json.
 
 Reads the trained HYBRID model (trend + kriged residual) + the gridded stack +
 the HCHO hotspot / back-trajectory / fire artifacts produced by run_demo.py (on
@@ -13,7 +13,7 @@ compact JSON the MapLibre + deck.gl frontend renders:
   fires.json        downsampled VIIRS-style fire pixels
   trajectory.json   Delhi 48h back-trajectory path
 
-The national outline web/public/data/india.geojson is the OFFICIAL Survey-of-India
+The national outline public/data/india.geojson is the OFFICIAL Survey-of-India
 boundary and is intentionally NOT overwritten here.
 
 Run after `make demo`:  python pipelines/export_web.py
@@ -36,7 +36,7 @@ sys.path.insert(0, "src")
 from isro_aqi.aqi import AQIEngine  # noqa: E402
 from isro_aqi.features import add_engineered_features  # noqa: E402
 
-OUT = Path("web/public/data")
+OUT = Path("public/data")
 OUT.mkdir(parents=True, exist_ok=True)
 
 # engine pollutant -> model target column
@@ -125,7 +125,7 @@ def main():
     write("hotspots.json", [
         {"lon": round(float(r.lon), 2), "lat": round(float(r.lat), 2),
          "source": str(r.source), "detail": str(getattr(r, "source_detail", "") or ""),
-         "frp": round(float(r.frp_mean), 1), "n": int(r.n_cells)}
+         "frp": (round(float(r.frp_mean), 1) if pd.notna(r.frp_mean) else None), "n": int(r.n_cells)}
         for r in hs.itertuples()
     ])
 
@@ -140,7 +140,7 @@ def main():
     traj = pd.read_csv("outputs/delhi_backtrajectory.csv")
     write("trajectory.json", [[round(float(r.lon), 2), round(float(r.lat), 2)] for r in traj.itertuples()])
 
-    print("done -> web/public/data/  (india.geojson left untouched — official boundary)")
+    print("done -> public/data/  (india.geojson left untouched — official boundary)")
 
 
 if __name__ == "__main__":

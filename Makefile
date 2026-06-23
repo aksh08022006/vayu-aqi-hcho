@@ -1,4 +1,4 @@
-.PHONY: help setup auth demo check-ingest real fetch-web ingest preprocess database train aqi hcho transport dashboard test lint clean
+.PHONY: help setup auth demo demo-fast check-ingest real fetch-web ingest preprocess database train aqi hcho transport dashboard test lint clean
 
 CONFIG ?= config/config.yaml
 PY     := python3
@@ -37,16 +37,16 @@ preprocess:   ## Phase 4: regrid, QA-filter, temporally aggregate, collocate
 database:     ## Phase 3: assemble the unified India-wide training table
 	$(PY) pipelines/03_build_database.py --config $(CONFIG)
 
-train:        ## Phases 6-7: train CNN-LSTM (+ RF/XGB baselines)
+train:        ## Phases 6-7: train RF/XGB baselines (CNN-LSTM training lives in run_demo.py)
 	$(PY) pipelines/04_train.py --config $(CONFIG)
 
-aqi:          ## Phases 5,8,9: estimate pollutants, compute AQI, render maps
+aqi:          ## [scaffold] Phases 5,8,9 stub — the real AQI run is `make demo` / `make real`
 	$(PY) pipelines/05_generate_aqi.py --config $(CONFIG)
 
-hcho:         ## Phases 7,9,10,11: HCHO hotspots + source attribution
+hcho:         ## [scaffold] Phases 10,11 stub — the real HCHO run is `make demo` / `make fetch-web`
 	$(PY) pipelines/06_hcho_analysis.py --config $(CONFIG)
 
-transport:    ## Phases 12-13: HCHO-ozone + wind transport analysis
+transport:    ## [scaffold] Phase 13 stub — the real transport run is `make demo` / `make fetch-web`
 	$(PY) pipelines/07_transport.py --config $(CONFIG)
 
 dashboard:    ## Launch the Streamlit dashboard

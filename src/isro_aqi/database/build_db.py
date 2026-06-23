@@ -45,14 +45,29 @@ def build_training_table(collocated: pd.DataFrame, out_path: str) -> pd.DataFram
 def build_inference_grid(daily: xr.Dataset, out_path: str) -> None:
     """Flatten a daily predictor Dataset to the partitioned inference parquet.
 
-    This is the large table (~50-100 M rows over multi-year India). Done per-day
-    to keep memory bounded; each day is appended to its year/month partition.
+    This is the large table (~50-100 M rows over multi-year India).
+
+    NOTE: the previous implementation wrote each day with a SEPARATE
+    ``write_parquet(..., partition_cols=...)`` call. ``DataFrame.to_parquet`` to a
+    partitioned dataset overwrites the destination partition directory, so days
+    sharing a year/month partition clobbered one another -- only the LAST day of
+    each month survived (despite the "appended" docstring). We instead build all
+    per-day frames and write them in ONE partitioned call so every day lands in
+    its month partition. (For multi-year India this is still large; chunk by year
+    upstream if memory is a concern -- each year is a disjoint partition set and
+    can be written to its own path safely.)
     """
+    frames = []
     for t in daily["time"].values:
         day = daily.sel(time=t)
         df = day.to_dataframe().reset_index()
         df = df.rename(columns={"time": "date"})
         keep = ["date", "lat", "lon"] + [c for c in PREDICTORS if c in df]
         df = _add_partitions(_coerce(df[keep].dropna(how="all", subset=PREDICTORS)))
-        write_parquet(df, out_path, partition_cols=PARTITION_COLS)
-    log.info(f"inference grid -> {out_path}")
+        frames.append(df)
+    if not frames:
+        log.info(f"inference grid -> {out_path} (no days)")
+        return
+    full = pd.concat(frames, ignore_index=True)
+    write_parquet(full, out_path, partition_cols=PARTITION_COLS)
+    log.info(f"inference grid -> {out_path} ({len(full):,} rows)")

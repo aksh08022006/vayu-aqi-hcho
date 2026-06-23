@@ -5,6 +5,10 @@ Two complementary detectors (problem statement: "statistical thresholds or
 clustering"): PHV ratio anomalies and FDR-corrected Getis-Ord Gi*. Detected cells
 are grouped into clusters via connected components and attributed to a source.
 
+STATUS: SCAFFOLD. This numbered CLI documents the intended wiring but is NOT
+implemented. The working HCHO detection/attribution runs in pipelines/run_demo.py
+(synthetic) and pipelines/fetch_real_web.py (real TROPOMI). Use those.
+
     python pipelines/06_hcho_analysis.py --config config/config.yaml \
         [--method phv|gi] [--season post_monsoon]
 """
@@ -42,7 +46,8 @@ def main():
     # clusters = source_attribution.attribute(clusters, cfg.regions, season=args.season)
     # hcho_map(hcho_da, clusters, out_path=f"{cfg.paths.outputs_maps}/hcho_{args.method}.png")
     log.info(f"method={args.method} season={args.season}")
-    log.info("Wire: qa-screened HCHO -> detect(PHV/Gi*) -> connected_clusters -> attribute -> hcho_map")
+    log.info("SCAFFOLD ONLY — implemented in run_demo.py / fetch_real_web.py. "
+             "Intended wiring: qa-screened HCHO -> detect(PHV/Gi*) -> connected_clusters -> attribute -> hcho_map")
     _ = (detect, source_attribution, hcho_map)
 
 

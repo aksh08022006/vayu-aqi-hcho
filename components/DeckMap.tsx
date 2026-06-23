@@ -249,7 +249,7 @@ function HotspotCard({ hotspot }: { hotspot: Hotspot | null }) {
 }
 
 export function DeckMap({
-  mode, frame = 0, gas = "hcho", height = 560, onReadout, aqiKind = "cpcb",
+  mode, frame = 0, gas = "hcho", height = 560, onReadout, aqiKind = "cpcb", onFrameCount,
 }: {
   mode: Mode;
   frame?: number;
@@ -257,6 +257,7 @@ export function DeckMap({
   height?: number;
   onReadout?: (s: string | null) => void;
   aqiKind?: "cpcb" | "rapi";   // which AQI index the 'aqi' mode colours by
+  onFrameCount?: (n: number) => void;   // reports how many timelapse frames the AQI data actually has
 }) {
   const wrap = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
@@ -400,6 +401,10 @@ export function DeckMap({
         data.current[map2[file]] = json;
         ok += 1;
       });
+      if (props.current.mode === "aqi") {
+        const frames = (data.current.aqi as { frames?: unknown[] } | undefined)?.frames;
+        onFrameCount?.(Array.isArray(frames) ? frames.length : 0);
+      }
       if (ok === files.length) {
         setLayerStatus("ready");
         setLayerMessage("");

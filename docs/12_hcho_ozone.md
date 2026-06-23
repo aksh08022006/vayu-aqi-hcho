@@ -1,3 +1,7 @@
+> ⚠️ **DEPRECATED IN REDESIGN — this module was removed; kept as design rationale only.**
+> The HCHO–O₃ / FNR-regime classifier (`hcho/ozone_relationship.py`) is **not implemented**.
+> FNR survives only as a feature column (`fnr = hcho/(no2+ε)`) in `features/engineering.py`.
+
 # Phase 12 — HCHO–Ozone Relationship
 
 Quantify how satellite HCHO columns track surface ozone and its VOC/NOx production regime over India, stratified by season.

@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 """Phases 5, 8, 9 -- estimate surface pollutants, compute AQI, render the atlas.
 
+STATUS: SCAFFOLD. This numbered CLI documents the intended per-stage wiring but is
+NOT implemented. The working end-to-end AQI generation lives in pipelines/run_demo.py
+(synthetic) and pipelines/run_real.py (real CPCB/OpenAQ-validated). Use those.
+
 Loads the trained model, predicts pollutant grids for each day, runs the CPCB AQI
 engine cell-by-cell, and writes daily/monthly/seasonal/annual AQI maps.
 
@@ -38,7 +42,8 @@ def main():
     # 3. reshape to (lat, lon) DataArray and render:
     #    aqi_map(aqi_da, title=f"AQI {date}", out_path=f"{outputs_maps}/aqi_{date}.png")
     # 4. aggregate to monthly/seasonal/annual atlas pages.
-    log.info("Wire: predict pollutants -> engine.compute_frame -> reshape -> aqi_map")
+    log.info("SCAFFOLD ONLY — implemented end-to-end in run_demo.py / run_real.py. "
+             "Intended wiring: predict pollutants -> engine.compute_frame -> reshape -> aqi_map")
     _ = (engine, aqi_map)
 
 

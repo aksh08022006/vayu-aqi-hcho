@@ -5,9 +5,9 @@ with gaps systematically biases surface PM2.5 (Katoch et al. 2023, ES&T: +19.1%
 exposure overestimation over India). So we fill the gaps BEFORE the main model.
 
 Backend: Random Forest on physically-motivated covariates (met + static + spatial
-+ cyclical time). RF is the "acceptable" path (India RF R2~0.87, Maharashtra 2024);
-the preferred upgrade is a residual autoencoder (Li 2020 RSE, R2~0.94) -- pluggable
-via the same fit/predict interface.
++ cyclical time). RF is the "acceptable" path (India RF R2~0.87, Maharashtra 2024).
+A residual autoencoder (Li 2020 RSE, R2~0.94) is a documented future upgrade but is
+NOT implemented here -- only the RandomForestGapFiller below exists.
 
 Critically, skill is reported with SPATIALLY-CLUSTERED holdout CV (not random),
 which mimics the real cloud-gap pattern -- random holdout overstates skill

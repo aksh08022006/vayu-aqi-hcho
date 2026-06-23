@@ -20,7 +20,9 @@ def scatter_obs_pred(
 
     fig, ax = plt.subplots(figsize=(5, 5))
     ax.hexbin(o, p, gridsize=50, cmap="viridis", mincnt=1)
-    lim = [0, max(o.max(), p.max())]
+    # lower bound must follow the data: hardcoding 0 clips negatives (e.g.
+    # standardized residuals or fields like SO2 column that can be < 0).
+    lim = [min(0.0, float(o.min()), float(p.min())), max(o.max(), p.max())]
     ax.plot(lim, lim, "k--", linewidth=1)
     ax.set(xlabel=f"Observed {pollutant}", ylabel=f"Predicted {pollutant}", xlim=lim, ylim=lim)
     ax.set_title(f"{pollutant}: R²={r2:.2f}, RMSE={rmse:.2f} (n={mask.sum():,})")

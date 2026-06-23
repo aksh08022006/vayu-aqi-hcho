@@ -33,6 +33,10 @@ MOSDAC_PORTAL = "https://www.mosdac.gov.in"
 def download_order(username: str, password: str, start: str, end: str, out_dir: str) -> None:
     """Order + download INSAT-3D L2B AOD for a date range from MOSDAC.
 
+    NOT IMPLEMENTED -- MOSDAC has no clean public REST API; access is an
+    authenticated order/SFTP flow tied to your registered account, so it cannot
+    be wired generically here. Use the MAIAC GEE fallback for prototyping.
+
     MOSDAC access flow (implement against your registered account):
       1. Authenticate to the MOSDAC portal / SFTP with credentials.
       2. Place a data order for product '3DIMG_L2B_AOD' over the date range.
@@ -49,6 +53,12 @@ def download_order(username: str, password: str, start: str, end: str, out_dir: 
 
 def read_granule(path: str | Path, grid: Grid, aod_var: str = "AOD") -> xr.DataArray:
     """Read one INSAT-3D L2B AOD granule (HDF5/NetCDF) and regrid onto `grid`.
+
+    NOT IMPLEMENTED for real granules -- INSAT-3D L2B products carry geolocation
+    as separate 2-D swath arrays, not CF lat/lon coords, so the swath-to-grid
+    reprojection is granule-schema-specific and cannot be inferred generically;
+    this function only handles the (rare) case where the granule already exposes
+    'lat'/'lon' coords and otherwise raises with guidance.
 
     INSAT-3D L2B products are typically HDF5 with geolocation arrays. Adjust
     `aod_var` and the lat/lon variable names to match the actual granule schema

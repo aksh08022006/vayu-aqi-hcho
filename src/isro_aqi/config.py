@@ -90,7 +90,11 @@ class HCHOConfig(BaseModel):
     phv_min: float = 1.0
     percentile: int = 95
     getis_ord: dict[str, Any] = {}
+    # NOTE: `dbscan` params are accepted for config compatibility but DBSCAN is
+    # NOT used -- hcho/source_attribution.connected_clusters (connected
+    # components) is the dependency-light clustering actually implemented.
     dbscan: dict[str, Any] = {}
+    # `fnr` thresholds feed features/engineering.add_fnr (HCHO/NO2 ratio regimes).
     fnr: dict[str, float] = {}
 
 

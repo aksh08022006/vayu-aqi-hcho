@@ -1,11 +1,14 @@
 #!/usr/bin/env python
 """Phases 6-7 -- train surface-pollutant models with the 3-scheme validation.
 
-Trains the chosen model (default: cfg.model.recommended = cnn_lstm) plus the
-RF/XGBoost baselines, reporting random / spatial / temporal validation so the
-honest (temporal) skill is visible alongside the optimistic (random) one.
+The RF/XGBoost baseline branch is fully wired (trains + saves models/<kind>.joblib).
+The deep-model (CNN-LSTM) branch here is a SCAFFOLD that only demonstrates the
+spatial-block splitter; the working CNN-LSTM training loop lives in pipelines/run_demo.py.
+Reports random / spatial / temporal validation so the honest (temporal/spatial) skill
+is visible alongside the optimistic (random) one.
 
-    python pipelines/04_train.py --config config/config.yaml [--model cnn_lstm|cnn|lstm|rf|xgb]
+    python pipelines/04_train.py --config config/config.yaml [--model rf|xgb]   # wired
+    python pipelines/04_train.py --model cnn_lstm   # scaffold only -> see run_demo.py
 """
 
 from __future__ import annotations
@@ -61,7 +64,9 @@ def main():
     # Report all three validation schemes:
     for _train, _val in spatial_blocks(df, cfg.validation.spatial_blocks, cfg.validation.k_folds):
         break  # demonstrates the splitter; wire into PatchSequenceDataset + train_model
-    log.info("Deep-model training: assemble PatchSequenceDataset + call train_model (see docstring).")
+    log.info("SCAFFOLD — deep-model (CNN-LSTM) training is implemented in run_demo.py. "
+             "This branch only demonstrates the spatial_blocks splitter. "
+             "Use `--model rf` or `--model xgb` here for a real baseline.")
 
 
 if __name__ == "__main__":

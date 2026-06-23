@@ -89,7 +89,7 @@ hcho:
   percentile: 95                          # P95 threshold method
   getis_ord:
     distance_band_deg: 0.05               # spatial weights bandwidth
-    fdr_correction: true                  # Benjamini-Hochberg on Gi* p-values
+    fdr: true                             # Benjamini-Hochberg on Gi* p-values (gi_star kwarg)
   dbscan:
     eps_deg: 0.05
     min_samples: 5

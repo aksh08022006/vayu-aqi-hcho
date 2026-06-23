@@ -1,32 +1,32 @@
-# Phase 6 — Surface-Pollutant Models (RF / XGBoost / CNN / LSTM / CNN-LSTM)
+# Phase 6 — Surface-Pollutant Models (RF / XGBoost / CNN / CNN-LSTM + regression-kriging)
 
-Five models of increasing spatio-temporal capacity to predict surface PM2.5, PM10, NO₂, SO₂, CO and O₃ from satellite + meteorological + static predictors, benchmarked against [C].
+Models of increasing spatio-temporal capacity to predict surface PM2.5, PM10, NO₂, SO₂, CO and O₃ from satellite + meteorological + static predictors, benchmarked against [C]. **The operational predictor is the per-pollutant Random Forest** (optionally a regression-kriging hybrid, `models/hybrid.py`); the **CNN-LSTM is implemented and validated but not on the map-generation path**.
 
 ## Objectives
-- Establish a tabular accuracy floor (RF, XGBoost) and SHAP attributions.
-- Add spatial context (CNN), temporal memory (LSTM), and both (CNN-LSTM, recommended).
+- Establish a tabular accuracy floor (RF, XGBoost); RF is the deployed predictor.
+- Add spatial context (CNN) and spatial+temporal capacity (CNN-LSTM) as the deep learner.
 - Beat [C]'s 10-fold CV skill while adding the meteorology [C] omitted [A].
 
 ## Scientific rationale
-Surface pollution depends on **both** spatial behaviour (sources, terrain, upwind transport, urban gradients) **and** temporal behaviour (accumulation under a stable boundary layer, photochemistry) [A][B]. A tabular model sees neither neighbourhood nor history; a pure CNN ignores accumulation; a pure LSTM ignores spatial context. The CNN-LSTM hybrid (Model 5) is therefore recommended: a shared CNN embeds each day's patch, and an LSTM integrates the sequence of embeddings — matching the physics where smog builds over multiple days across a spatial field.
+Surface pollution depends on **both** spatial behaviour (sources, terrain, upwind transport, urban gradients) **and** temporal behaviour (accumulation under a stable boundary layer, photochemistry) [A][B]. A tabular model sees neither neighbourhood nor history; a pure CNN ignores accumulation. The CNN-LSTM hybrid is therefore the deep learner: a shared CNN embeds each day's patch, and an LSTM integrates the sequence of embeddings — matching the physics where smog builds over multiple days across a spatial field. (A standalone LSTM was prototyped but removed in the redesign; the LSTM survives only as the inner recurrent cell of the CNN-LSTM.)
 
 ## Input datasets / inputs
 Engineered tabular table (Phase 5) for Models 1–2; `(T, C, P, P)` patch sequences from `PatchSequenceDataset` for Models 3–5 (P=`patch_size`=15, T=`sequence_length`=7, C predictor channels). Targets: `[pm25, pm10, no2, so2, co, o3]`.
 
 ## Algorithm / workflow / architecture
-- **Model 1 — Random Forest** (`RandomForestModel`): 300 trees, one regressor per target (`_PerTargetModel`) for clean per-pollutant tuning and SHAP.
+- **Model 1 — Random Forest** (`RandomForestModel`, **operational**): 300 trees, one regressor per target (`_PerTargetModel`) for clean per-pollutant tuning.
 - **Model 2 — XGBoost** (`XGBoostModel`): 600 trees, depth 8, lr 0.05, subsample/colsample 0.8, `tree_method="hist"`.
 - **Model 3 — CNN** (`PollutantCNN`): per-patch spatial encoder.
   `Conv2d(C→32,3) BN ReLU → Conv2d(32→64,3) BN ReLU → MaxPool2d(2) → Conv2d(64→128,3) BN ReLU → AdaptiveAvgPool2d(1)` → `Flatten → Linear(128→64) ReLU Dropout(0.3) → Linear(64→n_targets)`. `.embed()` returns the **128-d** spatial vector.
-- **Model 4 — LSTM** (`PollutantLSTM`): 2-layer LSTM, hidden=128, dropout 0.2, last-step → `Linear(128→64) → Linear(64→n_targets)`; consumes `(B, T, F)`.
-- **Model 5 — CNN-LSTM** (`PollutantCNNLSTM`, **recommended**): shared `PollutantCNN.embed` over each of T frames → `(B, T, 128)` → 2-layer LSTM(128) → head → `(B, n_targets)` for the centre cell on day T.
+- **Model 4 — CNN-LSTM** (`PollutantCNNLSTM`, the deep learner): shared `PollutantCNN.embed` over each of T frames → `(B, T, 128)` → 2-layer LSTM(128) → head → `(B, n_targets)` for the centre cell on day T. Validated but not on the map path.
+- **Regression-kriging hybrid** (`HybridModel`): `C(s,t) = μ(RF trend) + v(kriged station residual)` — the deployed model in the demo (`hybrid.joblib`).
 
 ## Mathematical formulation
 Convolution (per output channel k):
 ```
 y_k(i,j) = Σ_c Σ_{u,v} W_{k,c,u,v} · x_c(i+u, j+v) + b_k
 ```
-LSTM gates (Model 4 / inner cell of Model 5):
+LSTM gates (inner cell of the CNN-LSTM):
 ```
 f_t = σ(W_f[h_{t−1},x_t]+b_f)      i_t = σ(W_i[h_{t−1},x_t]+b_i)
 o_t = σ(W_o[h_{t−1},x_t]+b_o)      g_t = tanh(W_g[h_{t−1},x_t]+b_g)
@@ -40,13 +40,13 @@ RMSE = sqrt( mean (y−ŷ)² )      MAE = mean |y−ŷ|
 ```
 
 ## Python libraries
-`scikit-learn` (RF), `xgboost`, `torch`/`torch.nn` (CNN/LSTM/CNN-LSTM), `joblib`, `numpy`, `pandas`, `xarray`, `shap`.
+`scikit-learn` (RF), `xgboost`, `torch`/`torch.nn` (CNN/CNN-LSTM), `joblib`, `numpy`, `pandas`, `xarray`.
 
 ## Code in this repo
 - `src/isro_aqi/models/baselines.py` — `RandomForestModel`, `XGBoostModel`, `metrics`
 - `src/isro_aqi/models/cnn.py` — `PollutantCNN` (`.embed()` 128-d)
-- `src/isro_aqi/models/lstm.py` — `PollutantLSTM`
-- `src/isro_aqi/models/cnn_lstm.py` — `PollutantCNNLSTM` (recommended)
+- `src/isro_aqi/models/cnn_lstm.py` — `PollutantCNNLSTM` (deep learner, off map path)
+- `src/isro_aqi/models/hybrid.py` — `HybridModel` (regression-kriging, deployed)
 - `src/isro_aqi/models/dataset.py` — `PatchSequenceDataset`, `Standardizer`
 
 ```python

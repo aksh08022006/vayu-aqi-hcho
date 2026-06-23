@@ -40,17 +40,33 @@ def add_interactions(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def add_temporal_lags(
-    df: pd.DataFrame, cols: list[str], lags=(1, 2, 3), group=("lat", "lon")
+    df: pd.DataFrame, cols: list[str], lags=(1, 2, 3), group=None
 ) -> pd.DataFrame:
-    """Per-cell lagged values and 3-day rolling means (requires sorted-by-date)."""
+    """Per-series lagged values and 3-day rolling means (requires sorted-by-date).
+
+    ``group`` is the grouping key for the series. It defaults to ["station_id"]
+    when that column is present (the natural per-station series), else falling
+    back to ["lat", "lon"] for gridded data.
+
+    The 3-day rolling mean (``_roll3``) is computed on the LAGGED series (shift 1
+    then roll) so it summarises the PRIOR three days only and never leaks the
+    current row's value -- otherwise the feature would include the target-day
+    observation it is meant to predict from.
+    """
+    if group is None:
+        group = ["station_id"] if "station_id" in df.columns else ["lat", "lon"]
+    group = list(group)
     df = df.sort_values("date")
-    g = df.groupby(list(group))
+    g = df.groupby(group)
     for c in cols:
         if c not in df:
             continue
         for lag in lags:
             df[f"{c}_lag{lag}"] = g[c].shift(lag)
-        df[f"{c}_roll3"] = g[c].transform(lambda s: s.rolling(3, min_periods=1).mean())
+        # shift(1) before rolling so the window covers the 3 PRECEDING days only.
+        df[f"{c}_roll3"] = g[c].transform(
+            lambda s: s.shift(1).rolling(3, min_periods=1).mean()
+        )
     return df
 
 
